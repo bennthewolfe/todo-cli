@@ -12,13 +12,11 @@ func main() {
 	}
 	todoList = loadedList
 
-	todoList.add("Buy groceries")
-	todoList.add("Walk the dog")
-	todoList.add("Read a book")
+	cmdFlags := NewCmdFlag()
 
-	todoList.delete(1) // Delete the second item
+	if err := cmdFlags.Execute(&todoList); err != nil {
+		panic(err)
+	}
 
 	storage.Save(todoList)
-
-	todoList.view("table")
 }

@@ -22,7 +22,15 @@ type Todo struct {
 
 type TodoList []Todo
 
-func (todoList *TodoList) add(title string) {
+func (todoList *TodoList) validateIndex(index int) error {
+	if index < 0 || index >= len(*todoList) {
+		err := errors.New("invalid index")
+		return fmt.Errorf(err.Error(), "%d", index)
+	}
+	return nil
+}
+
+func (todoList *TodoList) add(title string) error {
 	todo := Todo{
 		Title:       title,
 		Completed:   false,
@@ -35,13 +43,7 @@ func (todoList *TodoList) add(title string) {
 	todo.ID = len(*todoList) + 1
 	todo.CreatedAt = time.Now().Format(time.RFC3339)
 	*todoList = append(*todoList, todo)
-}
 
-func (todoList *TodoList) validateIndex(index int) error {
-	if index < 0 || index >= len(*todoList) {
-		err := errors.New("invalid index")
-		return fmt.Errorf(err.Error(), "%d", index)
-	}
 	return nil
 }
 
@@ -62,6 +64,7 @@ func (todoList *TodoList) delete(index int) error {
 
 func (todoList *TodoList) toggle(index int) error {
 	t := *todoList
+	index-- // Adjust for 0-based index
 
 	// Validate the index before attempting to toggle
 	if err := t.validateIndex(index); err != nil {
@@ -108,6 +111,8 @@ func (todoList *TodoList) view(format string) {
 		return
 	case "table":
 		t.viewTable()
+		return
+	case "none":
 		return
 	default:
 		t.viewJSON("raw")
