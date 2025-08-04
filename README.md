@@ -22,7 +22,7 @@ This based on the tutorial https://codingwithpatrik.dev/posts/how-to-build-a-cli
    ```
 3. Build the application (to compile to exe):
    ```bash
-   go build
+   go build -o todo.exe
    ```
 
 ## Usage
@@ -34,9 +34,20 @@ go run .
 # go run . | jq
 ```
 
-### Example
+## Installation
+Add the application to your PATH, and then call it with:
 ```bash
-$ go run . | jq
+todo
+```
+
+I created a symlink in a folder that is in my PATH with the following powershell:
+```pwsh
+New-Item -ItemType SymbolicLink -Path <LINK> -Target <ACTUAL SOURCE>
+```
+
+### Example
+```pwsh
+$ todo list --format json | jq
 [
   {
     "id": 0,
