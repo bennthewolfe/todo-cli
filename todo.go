@@ -13,7 +13,7 @@ import (
 
 type Todo struct {
 	ID          int    `json:"id"`
-	Title       string `json:"title"`
+	Task        string `json:"task"`
 	Completed   bool   `json:"completed"`
 	CreatedAt   string `json:"created_at"`
 	UpdatedAt   string `json:"updated_at"`
@@ -30,9 +30,9 @@ func (todoList *TodoList) validateIndex(index int) error {
 	return nil
 }
 
-func (todoList *TodoList) add(title string) error {
+func (todoList *TodoList) add(task string) error {
 	todo := Todo{
-		Title:       title,
+		Task:        task,
 		Completed:   false,
 		CreatedAt:   time.Now().Format(time.RFC3339),
 		UpdatedAt:   time.Now().Format(time.RFC3339),
@@ -84,7 +84,7 @@ func (todoList *TodoList) toggle(index int) error {
 	return nil
 }
 
-func (todoList *TodoList) update(index int, title string) error {
+func (todoList *TodoList) update(index int, task string) error {
 	t := *todoList
 
 	// Validate the index before attempting to update
@@ -92,8 +92,8 @@ func (todoList *TodoList) update(index int, title string) error {
 		return err
 	}
 
-	// Update the title of the Todo item
-	t[index].Title = title
+	// Update the task of the Todo item
+	t[index].Task = task
 	t[index].UpdatedAt = time.Now().Format(time.RFC3339)
 
 	return nil
@@ -163,7 +163,7 @@ func (todoList *TodoList) viewTable() {
 	for _, todo := range *todoList {
 		t.AddRow(
 			fmt.Sprintf("%d", todo.ID),
-			todo.Title,
+			todo.Task,
 			fmt.Sprintf("%t", todo.Completed),
 			todo.CreatedAt,
 			todo.UpdatedAt,
