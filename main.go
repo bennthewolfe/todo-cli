@@ -19,34 +19,20 @@ func main() {
 	}
 	todoList = loadedList
 
-	// Create command registry
-	registry := commands.GetRegistry()
-
-	// Parse command line arguments
-	args := os.Args[1:]
+	// Parse flags
+	listFlag, args := ParseFlags()
 
 	// If no arguments provided, default to list command
 	if len(args) == 0 {
 		args = []string{"list"}
 	}
 
-	// Handle --help and -h flags by converting them to help command
-	if args[0] == "--help" || args[0] == "-h" {
-		if len(args) > 1 {
-			args = []string{"help", args[1]}
-		} else {
-			args = []string{"help"}
-		}
-	}
-
-	// Handle --version and -v flags by converting them to version command
-	if args[0] == "--version" || args[0] == "-v" {
-		args = []string{"version"}
-	}
-
 	// Extract command name and arguments
 	commandName := args[0]
 	commandArgs := args[1:]
+
+	// Create command registry
+	registry := commands.GetRegistry()
 
 	// Execute the command
 	if err := registry.Execute(commandName, commandArgs, &todoList); err != nil {
@@ -58,5 +44,10 @@ func main() {
 	if err := storage.Save(todoList); err != nil {
 		fmt.Fprintf(os.Stderr, "Error saving todos: %v\n", err)
 		os.Exit(1)
+	}
+
+	// Check the --list flag and display the todo list if set
+	if listFlag {
+		todoList.View("table")
 	}
 }

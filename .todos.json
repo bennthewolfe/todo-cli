@@ -30,5 +30,40 @@
     "created_at": "2025-08-04T16:18:51-04:00",
     "updated_at": "2025-08-04T18:41:21-04:00",
     "completed_at": "2025-08-04T18:39:06-04:00"
+  },
+  {
+    "id": 5,
+    "task": "Fix delete bug with indexes",
+    "completed": false,
+    "created_at": "2025-08-04T18:48:25-04:00",
+    "updated_at": "2025-08-04T18:48:25-04:00"
+  },
+  {
+    "id": 6,
+    "task": "Add --global and --local support",
+    "completed": false,
+    "created_at": "2025-08-04T18:48:42-04:00",
+    "updated_at": "2025-08-04T18:48:42-04:00"
+  },
+  {
+    "id": 7,
+    "task": "Fix all flags",
+    "completed": false,
+    "created_at": "2025-08-04T18:48:55-04:00",
+    "updated_at": "2025-08-04T18:48:55-04:00"
+  },
+  {
+    "id": 8,
+    "task": "New item --list",
+    "completed": false,
+    "created_at": "2025-08-04T19:10:36-04:00",
+    "updated_at": "2025-08-04T19:10:36-04:00"
+  },
+  {
+    "id": 9,
+    "task": "Add archive feature (and way to access / restore)",
+    "completed": false,
+    "created_at": "2025-08-04T19:27:40-04:00",
+    "updated_at": "2025-08-04T19:27:40-04:00"
   }
 ]

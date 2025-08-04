@@ -92,6 +92,7 @@ func (cr *CommandRegistry) ShowHelp(commandName string, version, releaseDate str
 		fmt.Println("  todo-cli edit 1 \"Read a book\"")
 		fmt.Println("  todo-cli toggle 1")
 		fmt.Println("  todo-cli list --format json")
+		fmt.Println("  todo-cli list --format json | jq '[.[] | select(.completed == false)]'")
 		fmt.Println("\nGLOBAL OPTIONS:")
 		fmt.Println("  --help, -h      Show help information")
 		fmt.Println("  --version, -v   Show version information")
