@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/aquasecurity/table"
+	"github.com/liamg/tml"
 )
 
 type Todo struct {
@@ -20,7 +21,37 @@ type Todo struct {
 	CompletedAt string `json:"completed_at,omitempty"`
 }
 
+// TodoListInterface defines the interface for TodoList operations that commands can use
+type TodoListInterface interface {
+	Add(task string) error
+	Delete(index int) error
+	Update(index int, task string) error
+	Toggle(index int) error
+	View(format string)
+}
+
 type TodoList []Todo
+
+// Interface wrapper methods (capitalize first letter to make them public)
+func (todoList *TodoList) Add(task string) error {
+	return todoList.add(task)
+}
+
+func (todoList *TodoList) Delete(index int) error {
+	return todoList.delete(index)
+}
+
+func (todoList *TodoList) Update(index int, task string) error {
+	return todoList.update(index, task)
+}
+
+func (todoList *TodoList) Toggle(index int) error {
+	return todoList.toggle(index)
+}
+
+func (todoList *TodoList) View(format string) {
+	todoList.view(format)
+}
 
 func (todoList *TodoList) validateIndex(index int) error {
 	if index < 0 || index >= len(*todoList) {
@@ -148,6 +179,8 @@ func (todoList *TodoList) viewTable() {
 
 	todoType := reflect.TypeOf(Todo{})
 
+	timeFormat := "2006-01-02"
+
 	var headers []string
 	for i := 0; i < todoType.NumField(); i++ {
 		headers = append(headers, todoType.Field(i).Name)
@@ -155,19 +188,56 @@ func (todoList *TodoList) viewTable() {
 
 	t := table.New(os.Stdout)
 
-	// Print table header
+	// Table options
 	t.SetRowLines(false)
+	// t.SetDividers(table.MarkdownDividers)
 
 	t.SetHeaders(headers...)
 
 	for _, todo := range *todoList {
+		// Handle all time fields consistently
+		var createdAtStr, updatedAtStr, completedAtStr string
+
+		// CreatedAt
+		if createdAt, err := time.Parse(time.RFC3339, todo.CreatedAt); err == nil {
+			createdAtStr = createdAt.Format(timeFormat)
+		} else {
+			createdAtStr = "Invalid"
+		}
+
+		// UpdatedAt
+		if updatedAt, err := time.Parse(time.RFC3339, todo.UpdatedAt); err == nil {
+			updatedAtStr = updatedAt.Format(timeFormat)
+		} else {
+			updatedAtStr = "Invalid"
+		}
+
+		// CompletedAt
+		if todo.CompletedAt != "" {
+			if completedAt, err := time.Parse(time.RFC3339, todo.CompletedAt); err == nil {
+				completedAtStr = completedAt.Format(timeFormat)
+			} else {
+				completedAtStr = "Invalid"
+			}
+		} else {
+			completedAtStr = ""
+		}
+
+		// Completion to emoji
+		var completedEmoji string
+		if todo.Completed {
+			completedEmoji = "✅"
+		} else {
+			completedEmoji = "❌"
+		}
+
 		t.AddRow(
 			fmt.Sprintf("%d", todo.ID),
 			todo.Task,
-			fmt.Sprintf("%t", todo.Completed),
-			todo.CreatedAt,
-			todo.UpdatedAt,
-			todo.CompletedAt,
+			completedEmoji,
+			createdAtStr,
+			updatedAtStr,
+			tml.Sprintf("<green>%s</green>", completedAtStr),
 		)
 	}
 

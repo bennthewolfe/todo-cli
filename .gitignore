@@ -2,9 +2,6 @@
 # https://github.com/github/gitignore/blob/main/community/Golang/Go.AllowList.gitignore
 #
 
-# Project-specific files
-todos.json
-
 # Binaries for programs and plugins
 *.exe
 *.exe~
