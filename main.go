@@ -27,6 +27,7 @@ func main() {
 	if commandFlags.Debug {
 		fmt.Printf("Args: %v\n", args)
 		fmt.Printf("Additional Args: %v\n", additionalArgs)
+		fmt.Printf("Flags: %+v\n", commandFlags)
 	}
 
 	// If no arguments provided, default to list command
