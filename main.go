@@ -25,6 +25,7 @@ func main() {
 	commandFlags, additionalArgs := NewCmdFlag()
 
 	if commandFlags.Debug {
+		fmt.Println("DEBUG INFO (args):")
 		fmt.Printf("Args: %v\n", args)
 		fmt.Printf("Additional Args: %v\n", additionalArgs)
 		fmt.Printf("Flags: %+v\n", commandFlags)

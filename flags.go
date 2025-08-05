@@ -3,7 +3,20 @@ package main
 import (
 	"flag"
 	"fmt"
+	"os"
 )
+
+type CmdFlag struct {
+	Add    string `flag:"add" help:"Add a new todo item"`
+	Delete int    `flag:"delete" help:"Delete a todo item by index"`
+	Edit   bool   `flag:"edit" help:"Edit a todo item by index and add a new task"`
+	ID     int    `flag:"id" help:"ID of the todo item to act on"`
+	Task   string `flag:"task" help:"Task for the todo item"`
+	Toggle int    `flag:"toggle" help:"Toggle completion status of a todo item by index"`
+	Format string `flag:"format" help:"Output format for listing todo items (table, json, pretty, none)"`
+	List   bool   `flag:"list" help:"List todo items"`
+	Debug  bool   `flag:"debug" help:"Enable debug mode"`
+}
 
 func init() {
 	flag.Usage = func() {
@@ -30,49 +43,67 @@ func init() {
 	}
 }
 
-type CmdFlag struct {
-	Add    string `flag:"add" help:"Add a new todo item"`
-	Delete int    `flag:"delete" help:"Delete a todo item by index"`
-	Edit   bool   `flag:"edit" help:"Edit a todo item by index and add a new task"`
-	ID     int    `flag:"id" help:"ID of the todo item to act on"`
-	Task   string `flag:"task" help:"Task for the todo item"`
-	Toggle int    `flag:"toggle" help:"Toggle completion status of a todo item by index"`
-	List   bool   `flag:"list" help:"List todo items"`
-	Format string `flag:"format" help:"Output format for listing todo items (table, json, pretty, none)"`
-	Debug  bool   `flag:"debug" help:"Enable debug mode"`
-}
-
 func NewCmdFlag() (*CmdFlag, []string) {
 	cf := &CmdFlag{}
 
-	flag.StringVar(&cf.Add, "add", "", "Add a new todo item")
-	flag.StringVar(&cf.Add, "a", "", "Alias for --add")
+	originalArgs := os.Args[1:]
 
-	flag.IntVar(&cf.Delete, "delete", -1, "Delete a todo item by index")
-	flag.IntVar(&cf.Delete, "del", -1, "Alias for --delete")
-	flag.IntVar(&cf.Delete, "d", -1, "Alias for --delete")
+	// Define global flags to filter out
+	// globalFlags := []string{"--debug", "--list", "-l", "--help", "-h"}
+	var globalFlagIndexes []int
 
-	flag.BoolVar(&cf.Edit, "edit", false, "Edit a todo item by index and add a new task")
-	flag.BoolVar(&cf.Edit, "e", false, "Alias for --edit")
+	// Process global flags and create filtered args
+	var filteredArgs []string
 
-	flag.IntVar(&cf.ID, "id", -1, "ID of the todo item to act on")
-	flag.IntVar(&cf.ID, "i", -1, "Alias for --id")
+	// Iterate through originalArgs and filter out global flags
+	// while also capturing their indexes
+	for idx, arg := range originalArgs {
+		switch arg {
+		case "--debug":
+			cf.Debug = true
+			globalFlagIndexes = append(globalFlagIndexes, idx)
+		case "--list", "-l":
+			cf.List = true
+			globalFlagIndexes = append(globalFlagIndexes, idx)
+		default:
+			filteredArgs = append(filteredArgs, arg)
+		}
+	}
 
-	flag.StringVar(&cf.Task, "task", "", "Task for the todo item")
-	flag.StringVar(&cf.Task, "t", "", "Alias for --task")
+	// Create a new flag set for command-specific flags
+	fs := flag.NewFlagSet("todo-cli", flag.ExitOnError)
 
-	flag.IntVar(&cf.Toggle, "toggle", -1, "Toggle completion status of a todo item by index")
-	flag.IntVar(&cf.Toggle, "c", -1, "Alias for --toggle (complete)")
+	// Define global flags
 
-	flag.BoolVar(&cf.List, "list", false, "List todo items")
-	flag.BoolVar(&cf.List, "l", false, "Alias for --list")
+	fs.BoolVar(&cf.Debug, "debug", false, "Enable debug mode")
 
-	flag.StringVar(&cf.Format, "format", "table", "Output format for listing todo items (table, json, pretty, none)")
-	flag.StringVar(&cf.Format, "f", "table", "Alias for --format")
+	fs.BoolVar(&cf.List, "list", false, "List all todo items")
+	fs.BoolVar(&cf.List, "l", false, "Alias for --list")
 
-	flag.BoolVar(&cf.Debug, "debug", false, "Enable debug mode")
+	// Define command-specific flags
+	fs.StringVar(&cf.Add, "add", "", "Add a new todo item")
+	fs.StringVar(&cf.Add, "a", "", "Alias for --add")
 
-	flag.Parse()
+	fs.IntVar(&cf.Delete, "delete", -1, "Delete a todo item by index")
+	fs.IntVar(&cf.Delete, "del", -1, "Alias for --delete")
+	fs.IntVar(&cf.Delete, "d", -1, "Alias for --delete")
 
-	return cf, flag.Args()
+	fs.BoolVar(&cf.Edit, "edit", false, "Edit a todo item by index and add a new task")
+	fs.BoolVar(&cf.Edit, "e", false, "Alias for --edit")
+
+	fs.IntVar(&cf.ID, "id", -1, "ID of the todo item to act on")
+	fs.IntVar(&cf.ID, "i", -1, "Alias for --id")
+
+	fs.StringVar(&cf.Task, "task", "", "Task for the todo item")
+	fs.StringVar(&cf.Task, "t", "", "Alias for --task")
+
+	fs.IntVar(&cf.Toggle, "toggle", -1, "Toggle completion status of a todo item by index")
+	fs.IntVar(&cf.Toggle, "c", -1, "Alias for --toggle (complete)")
+
+	fs.StringVar(&cf.Format, "format", "table", "Output format for listing todo items (table, json, pretty, none)")
+	fs.StringVar(&cf.Format, "f", "table", "Alias for --format")
+
+	fs.Parse(filteredArgs)
+
+	return cf, fs.Args()
 }
