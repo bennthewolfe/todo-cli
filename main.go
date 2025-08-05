@@ -19,23 +19,26 @@ func main() {
 	}
 	todoList = loadedList
 
+	args := os.Args[1:]
+
 	// Parse flags
-	listFlag, args := ParseFlags()
+	commandFlags, additionalArgs := NewCmdFlag()
+
+	if commandFlags.Debug {
+		fmt.Printf("Args: %v\n", args)
+		fmt.Printf("Additional Args: %v\n", additionalArgs)
+	}
 
 	// If no arguments provided, default to list command
 	if len(args) == 0 {
 		args = []string{"list"}
 	}
 
-	// Extract command name and arguments
-	commandName := args[0]
-	commandArgs := args[1:]
-
 	// Create command registry
 	registry := commands.GetRegistry()
 
 	// Execute the command
-	if err := registry.Execute(commandName, commandArgs, &todoList); err != nil {
+	if err := registry.Execute(args[0], args[1:], &todoList); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)
 	}
@@ -47,7 +50,7 @@ func main() {
 	}
 
 	// Check the --list flag and display the todo list if set
-	if listFlag {
+	if commandFlags.List {
 		todoList.View("table")
 	}
 }

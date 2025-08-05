@@ -1,5 +1,11 @@
 package commands
 
+import (
+	"fmt"
+
+	"github.com/bennthewolfe/todo-cli/config"
+)
+
 // HelpCommand handles displaying help information
 type HelpCommand struct{}
 
@@ -22,18 +28,50 @@ func (c *HelpCommand) Usage() string {
 func (c *HelpCommand) Execute(args []string, todoList TodoListInterface) error {
 	registry := GetRegistry()
 
-	// Get version info from the registry's version command if available
-	version := "1.1.0"
-	releaseDate := "2025-08-04"
+	// Get version info from config
+	version := config.Version
+	releaseDate := config.ReleaseDate
 
 	// If no specific command is requested, show general help
 	if len(args) == 0 {
-		registry.ShowHelp("", version, releaseDate)
+		fmt.Println("Todo is a simple command-line interface for managing todo items.")
+		fmt.Println("\nATTRIBUTION:")
+		fmt.Println("  This project is inspired by the tutorial from https://codingwithpatrik.dev/posts/how-to-build-a-cli-todo-app-in-go/.")
+		fmt.Println("\nVERSION:")
+		fmt.Println("  todo-cli version", version, "--", "(", releaseDate, ")")
+		fmt.Println("\nUSAGE:")
+		fmt.Println("  todo-cli <COMMAND> [ARGUMENTS] [--FLAGS]")
+		fmt.Println("\nCOMMANDS:")
+
+		for _, cmd := range registry.ListCommands() {
+			fmt.Printf("  %-10s %s\n", cmd.Name(), cmd.Description())
+		}
+
+		fmt.Println("\nUse 'todo-cli help <COMMAND>' for more information about a command.")
+		// todo: fmt.Println("\nTOPICS:")
+		fmt.Println("\nEXAMPLES:")
+		fmt.Println("  todo-cli add \"Buy groceries\"")
+		fmt.Println("  todo-cli delete 2")
+		fmt.Println("  todo-cli edit 1 \"Read a book\"")
+		fmt.Println("  todo-cli toggle 1")
+		fmt.Println("  todo-cli list --format json")
+		fmt.Println("  todo-cli list --format json | jq '[.[] | select(.completed == false)]'")
+		fmt.Println("\nGLOBAL OPTIONS:")
+		fmt.Println("  --help, -h      Show help information")
+		fmt.Println("  --version, -v   Show version information")
 		return nil
 	}
 
-	// Show help for specific command
+	// Show help for a specific command
 	commandName := args[0]
-	registry.ShowHelp(commandName, version, releaseDate)
+	cmd, exists := registry.GetCommand(commandName)
+	if !exists {
+		fmt.Printf("Unknown command: %s\n", commandName)
+		return nil
+	}
+
+	fmt.Printf("Command: %s\n", cmd.Name())
+	fmt.Printf("Description: %s\n", cmd.Description())
+	fmt.Printf("Usage: %s\n", cmd.Usage())
 	return nil
 }

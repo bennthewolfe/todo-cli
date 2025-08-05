@@ -80,6 +80,9 @@ $ todo list --format json | jq
 ]
 ```
 
+## Todos
+[See .todos.json](./.todos.json)
+
 ## Development
 ### Prerequisites
 - Go 1.24.5 or later

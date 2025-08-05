@@ -42,7 +42,7 @@ type CmdFlag struct {
 	Debug  bool   `flag:"debug" help:"Enable debug mode"`
 }
 
-func NewCmdFlag() *CmdFlag {
+func NewCmdFlag() (*CmdFlag, []string) {
 	cf := &CmdFlag{}
 
 	flag.StringVar(&cf.Add, "add", "", "Add a new todo item")
@@ -74,12 +74,5 @@ func NewCmdFlag() *CmdFlag {
 
 	flag.Parse()
 
-	return cf
-}
-
-// ParseFlags parses global flags and returns the remaining arguments and the value of the --list flag.
-func ParseFlags() (bool, []string) {
-	listFlag := flag.Bool("list", false, "Display the todo list after executing the command")
-	flag.Parse()
-	return *listFlag, flag.Args()
+	return cf, flag.Args()
 }
