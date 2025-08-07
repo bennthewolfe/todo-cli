@@ -9,24 +9,50 @@ GOGET=$(GOCMD) get
 GOMOD=$(GOCMD) mod
 BINARY_NAME=todo
 BINARY_WINDOWS=$(BINARY_NAME).exe
+BINARY_LINUX=$(BINARY_NAME)
+BINARY_MAC=$(BINARY_NAME)
+
+# Build directories
+BUILD_DIR=build
 
 # Test parameters
 TEST_PACKAGES=./...
 COVERAGE_FILE=coverage.out
 
-.PHONY: all build clean test coverage bench bench-verbose lint help
+.PHONY: all build clean test coverage bench bench-verbose lint help build-all build-windows build-linux build-darwin
 
 # Default target
 all: test build
 
-# Build the application
+# Build the application (Windows - for local development)
 build:
 	$(GOBUILD) -o $(BINARY_WINDOWS) -v .
+
+# Build for all platforms
+build-all: build-windows build-linux build-darwin
+
+# Build for Windows
+build-windows:
+	mkdir -p $(BUILD_DIR)
+	GOOS=windows GOARCH=amd64 $(GOBUILD) -o $(BUILD_DIR)/$(BINARY_WINDOWS) -v .
+
+# Build for Linux  
+build-linux:
+	mkdir -p $(BUILD_DIR)
+	GOOS=linux GOARCH=amd64 $(GOBUILD) -o $(BUILD_DIR)/$(BINARY_LINUX) -v .
+
+# Build for macOS
+build-darwin:
+	mkdir -p $(BUILD_DIR)
+	GOOS=darwin GOARCH=amd64 $(GOBUILD) -o $(BUILD_DIR)/$(BINARY_MAC) -v .
+	GOOS=darwin GOARCH=arm64 $(GOBUILD) -o $(BUILD_DIR)/$(BINARY_MAC)-arm64 -v .
 
 # Clean build files
 clean:
 	$(GOCLEAN)
 	rm -f $(BINARY_WINDOWS)
+	rm -rf $(BUILD_DIR)
+	rm -f $(COVERAGE_FILE) coverage.html
 	rm -f $(COVERAGE_FILE)
 
 # Run all tests
@@ -86,7 +112,11 @@ install:
 # Show help
 help:
 	@echo "Available targets:"
-	@echo "  build         - Build the application"
+	@echo "  build         - Build the application (Windows exe for local dev)"
+	@echo "  build-all     - Build for all platforms (Windows, Linux, macOS)"
+	@echo "  build-windows - Build for Windows (amd64)"
+	@echo "  build-linux   - Build for Linux (amd64)"
+	@echo "  build-darwin  - Build for macOS (amd64 and arm64)"
 	@echo "  clean         - Clean build files"
 	@echo "  test          - Run all tests"
 	@echo "  test-unit     - Run unit tests only"

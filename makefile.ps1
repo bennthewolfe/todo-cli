@@ -12,14 +12,67 @@ function All {
 }
 
 function Build {
-    Write-Host "Building application..." -ForegroundColor Green
+    Write-Host "Building application (Windows exe for local development)..." -ForegroundColor Green
     go build -o todo.exe -v .
+}
+
+function Build-All {
+    Write-Host "Building for all platforms..." -ForegroundColor Green
+    Build-Windows
+    Build-Linux
+    Build-Darwin
+}
+
+function Build-Windows {
+    Write-Host "Building for Windows (amd64)..." -ForegroundColor Green
+    if (!(Test-Path "build")) {
+        New-Item -ItemType Directory -Path "build" | Out-Null
+    }
+    $env:GOOS = "windows"
+    $env:GOARCH = "amd64"
+    go build -o "build/todo.exe" -v .
+    Remove-Item Env:GOOS -ErrorAction SilentlyContinue
+    Remove-Item Env:GOARCH -ErrorAction SilentlyContinue
+}
+
+function Build-Linux {
+    Write-Host "Building for Linux (amd64)..." -ForegroundColor Green
+    if (!(Test-Path "build")) {
+        New-Item -ItemType Directory -Path "build" | Out-Null
+    }
+    $env:GOOS = "linux"
+    $env:GOARCH = "amd64"
+    go build -o "build/todo" -v .
+    Remove-Item Env:GOOS -ErrorAction SilentlyContinue
+    Remove-Item Env:GOARCH -ErrorAction SilentlyContinue
+}
+
+function Build-Darwin {
+    Write-Host "Building for macOS (amd64 and arm64)..." -ForegroundColor Green
+    if (!(Test-Path "build")) {
+        New-Item -ItemType Directory -Path "build" | Out-Null
+    }
+    
+    # Build for Intel Mac
+    $env:GOOS = "darwin"
+    $env:GOARCH = "amd64"
+    go build -o "build/todo" -v .
+    Remove-Item Env:GOOS -ErrorAction SilentlyContinue
+    Remove-Item Env:GOARCH -ErrorAction SilentlyContinue
+    
+    # Build for Apple Silicon Mac
+    $env:GOOS = "darwin"
+    $env:GOARCH = "arm64"
+    go build -o "build/todo-arm64" -v .
+    Remove-Item Env:GOOS -ErrorAction SilentlyContinue
+    Remove-Item Env:GOARCH -ErrorAction SilentlyContinue
 }
 
 function Clean {
     Write-Host "Cleaning build files..." -ForegroundColor Green
     go clean
     Remove-Item -Path "todo.exe" -ErrorAction SilentlyContinue
+    Remove-Item -Path "build" -Recurse -Force -ErrorAction SilentlyContinue
     Remove-Item -Path "coverage.out" -ErrorAction SilentlyContinue
     Remove-Item -Path "coverage.html" -ErrorAction SilentlyContinue
 }
@@ -107,7 +160,11 @@ function Install {
 function Show-Help {
     Write-Host "Available targets:" -ForegroundColor Cyan
     Write-Host "  all           - Run default workflow (test then build)"
-    Write-Host "  build         - Build the application"
+    Write-Host "  build         - Build the application (Windows exe for local dev)"
+    Write-Host "  build-all     - Build for all platforms (Windows, Linux, macOS)"
+    Write-Host "  build-windows - Build for Windows (amd64)"
+    Write-Host "  build-linux   - Build for Linux (amd64)"
+    Write-Host "  build-darwin  - Build for macOS (amd64 and arm64)"
     Write-Host "  clean         - Clean build files"
     Write-Host "  test          - Run all tests"
     Write-Host "  test-unit     - Run unit tests only"
@@ -133,6 +190,10 @@ function Show-Help {
 switch ($Target.ToLower()) {
     "all" { All }
     "build" { Build }
+    "build-all" { Build-All }
+    "build-windows" { Build-Windows }
+    "build-linux" { Build-Linux }
+    "build-darwin" { Build-Darwin }
     "clean" { Clean }
     "test" { Test }
     "coverage" { Coverage }
