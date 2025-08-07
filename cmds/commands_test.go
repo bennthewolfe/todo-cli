@@ -140,11 +140,11 @@ func TestCommandsWithTodoList(t *testing.T) {
 	}
 
 	if todoList == nil {
-		t.Errorf("initializeTodoList() returned nil todoList")
+		t.Fatalf("initializeTodoList() returned nil todoList")
 	}
 
 	if storage == nil {
-		t.Errorf("initializeTodoList() returned nil storage")
+		t.Fatalf("initializeTodoList() returned nil storage")
 	}
 
 	// Test adding a task through the interface
