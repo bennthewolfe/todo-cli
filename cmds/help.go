@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/urfave/cli/v3"
 	"github.com/bennthewolfe/todo-cli/config"
+	"github.com/urfave/cli/v3"
 )
 
 // NewHelpCommand creates a new help command for urfave/cli

@@ -19,9 +19,77 @@ The test suite includes:
 
 ## Running Tests
 
-### Basic Test Commands
+### Cross-Platform Build Scripts
+
+This project provides both **Unix/Linux Makefile** and **Windows PowerShell** build scripts with complete feature parity.
+
+#### On Unix/Linux/macOS (using Makefile)
+
+```bash
+# Run all tests
+make test
+
+# Generate coverage report
+make coverage
+
+# Run unit tests only
+make test-unit
+
+# Run integration tests only
+make test-integration
+
+# Run benchmark tests
+make bench
+
+# Run tests with race detection
+make test-race
+
+# Format, vet, lint, and test
+make check
+
+# Default workflow (test then build)
+make all
+
+# Show all available targets
+make help
+```
+
+#### On Windows (using PowerShell script)
 
 ```powershell
+# Run all tests
+.\makefile.ps1 test
+
+# Generate coverage report
+.\makefile.ps1 coverage
+
+# Run unit tests only
+.\makefile.ps1 test-unit
+
+# Run integration tests only
+.\makefile.ps1 test-integration
+
+# Run benchmark tests
+.\makefile.ps1 bench
+
+# Run tests with race detection
+.\makefile.ps1 test-race
+
+# Format, vet, lint, and test
+.\makefile.ps1 check
+
+# Default workflow (test then build)
+.\makefile.ps1 all
+
+# Show all available targets
+.\makefile.ps1 help
+```
+
+### Basic Test Commands (Direct Go)
+
+If you prefer using Go commands directly:
+
+```bash
 # Run all tests
 go test -v ./...
 
@@ -44,35 +112,28 @@ go test -bench=. -run=^$ .
 go test -v -race ./...
 ```
 
-### Using the Makefile
+## Available Build Targets
 
-A comprehensive Makefile is provided for easy test management:
+Both build systems support the following targets with identical functionality:
 
-```powershell
-# Run all tests
-make test
-
-# Generate coverage report
-make coverage
-
-# Run unit tests only
-make test-unit
-
-# Run integration tests only
-make test-integration
-
-# Run benchmark tests
-make bench
-
-# Run tests with race detection
-make test-race
-
-# Format, vet, lint, and test
-make check
-
-# Show all available targets
-make help
-```
+| Target | Description |
+|--------|-------------|
+| `all` | Run default workflow (test then build) |
+| `build` | Build the application |
+| `clean` | Clean build files |
+| `test` | Run all tests |
+| `test-unit` | Run unit tests only |
+| `test-integration` | Run integration tests only |
+| `coverage` | Run tests with coverage report |
+| `bench` | Run benchmark tests |
+| `test-race` | Run tests with race condition detection |
+| `lint` | Lint the code (requires golangci-lint) |
+| `fmt` / `format` | Format the code |
+| `vet` | Vet the code |
+| `check` | Run all quality checks (fmt, vet, lint, test) |
+| `deps` | Download dependencies |
+| `install` | Install the application |
+| `help` | Show help with all available targets |
 
 ## Test Coverage
 
