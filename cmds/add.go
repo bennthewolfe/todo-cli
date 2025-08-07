@@ -17,7 +17,7 @@ func NewAddCommand() *cli.Command {
 		ArgsUsage: "<task>",
 		Action: func(ctx context.Context, c *cli.Command) error {
 			if c.Args().Len() == 0 {
-				return fmt.Errorf("task description is required")
+				return cli.Exit("task description is required", 1)
 			}
 
 			// Join all arguments as the task description
@@ -26,17 +26,17 @@ func NewAddCommand() *cli.Command {
 			// Initialize todo list and storage
 			todoList, storage, err := initializeTodoList()
 			if err != nil {
-				return err
+				return cli.Exit(fmt.Sprintf("failed to initialize todo list: %v", err), 2)
 			}
 
 			// Add the task
 			if err := todoList.Add(task); err != nil {
-				return err
+				return cli.Exit(fmt.Sprintf("failed to add task: %v", err), 1)
 			}
 
 			// Save the updated todo list
 			if err := storage.Save(*todoList); err != nil {
-				return fmt.Errorf("error saving todos: %w", err)
+				return cli.Exit(fmt.Sprintf("error saving todos: %v", err), 2)
 			}
 
 			fmt.Printf("Added task: %s\n", task)

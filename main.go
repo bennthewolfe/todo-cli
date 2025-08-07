@@ -5,20 +5,20 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/urfave/cli/v3"
-	"github.com/bennthewolfe/todo-cli/config"
 	commands "github.com/bennthewolfe/todo-cli/cmds"
+	"github.com/bennthewolfe/todo-cli/config"
+	"github.com/urfave/cli/v3"
 )
 
 func main() {
 	app := &cli.Command{
-		Name:    "todo-cli",
+		Name:    "Todo CLI",
 		Usage:   "A simple command-line interface for managing todo items",
 		Version: config.Version,
 		Description: "Todo CLI is a command-line application for managing a to-do list. " +
 			"It allows users to add, view, and manage tasks efficiently. " +
 			"This project is inspired by the tutorial from https://codingwithpatrik.dev/posts/how-to-build-a-cli-todo-app-in-go/.",
-		
+
 		// Global flags
 		Flags: []cli.Flag{
 			&cli.BoolFlag{

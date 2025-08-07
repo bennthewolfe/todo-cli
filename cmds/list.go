@@ -36,13 +36,13 @@ func NewListCommand() *cli.Command {
 			}
 
 			if !valid {
-				return fmt.Errorf("invalid format: %s. Allowed formats: %s", format, strings.Join(allowedFormats, ", "))
+				return cli.Exit(fmt.Sprintf("invalid format: %s. Allowed formats: %s", format, strings.Join(allowedFormats, ", ")), 1)
 			}
 
 			// Initialize todo list and storage
 			todoList, _, err := initializeTodoList()
 			if err != nil {
-				return err
+				return cli.Exit(fmt.Sprintf("failed to initialize todo list: %v", err), 2)
 			}
 
 			todoList.View(format)

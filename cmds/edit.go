@@ -18,16 +18,16 @@ func NewEditCommand() *cli.Command {
 		ArgsUsage: "<id> <new_task>",
 		Action: func(ctx context.Context, c *cli.Command) error {
 			if c.Args().Len() < 2 {
-				return fmt.Errorf("ID and new task description are required\nUsage: todo-cli edit <id> <new_task>")
+				return cli.Exit("ID and new task description are required", 1)
 			}
 
 			id, err := strconv.Atoi(c.Args().First())
 			if err != nil {
-				return fmt.Errorf("invalid ID: %s must be a number", c.Args().First())
+				return cli.Exit(fmt.Sprintf("invalid ID: %s must be a number", c.Args().First()), 1)
 			}
 
 			if id <= 0 {
-				return fmt.Errorf("ID must be greater than 0")
+				return cli.Exit("ID must be greater than 0", 1)
 			}
 
 			// Join all arguments after the ID as the new task
@@ -36,17 +36,17 @@ func NewEditCommand() *cli.Command {
 			// Initialize todo list and storage
 			todoList, storage, err := initializeTodoList()
 			if err != nil {
-				return err
+				return cli.Exit(fmt.Sprintf("failed to initialize todo list: %v", err), 2)
 			}
 
 			// Update the item
 			if err := todoList.Update(id-1, newTask); err != nil { // Convert to 0-based index
-				return err
+				return cli.Exit(fmt.Sprintf("failed to update task: %v", err), 1)
 			}
 
 			// Save the updated todo list
 			if err := storage.Save(*todoList); err != nil {
-				return fmt.Errorf("error saving todos: %w", err)
+				return cli.Exit(fmt.Sprintf("error saving todos: %v", err), 2)
 			}
 
 			fmt.Printf("Updated todo item %d: %s\n", id, newTask)
