@@ -2,7 +2,6 @@ package commands
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"os"
 	"reflect"
@@ -99,7 +98,6 @@ func (todoList *TodoList) View(format string) {
 // Private methods
 func (todoList *TodoList) validateIndex(index int) error {
 	if index < 0 || index >= len(*todoList) {
-		err := errors.New("invalid index")
 		return fmt.Errorf("invalid index: %d", index)
 	}
 	return nil
