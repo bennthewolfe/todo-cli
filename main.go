@@ -55,7 +55,7 @@ func main() {
 			commands.NewListCommand(),
 			commands.NewToggleCommand(),
 			commands.NewVersionCommand(),
-			commands.NewHelpCommand(),
+			// Removed NewHelpCommand() - using urfave/cli built-in help instead
 		},
 	}
 

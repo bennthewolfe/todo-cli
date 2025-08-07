@@ -128,22 +128,6 @@ func TestVersionCommand_Creation(t *testing.T) {
 	}
 }
 
-func TestHelpCommand_Creation(t *testing.T) {
-	cmd := NewHelpCommand()
-
-	if cmd.Name != "help" {
-		t.Errorf("NewHelpCommand() Name = %s, want 'help'", cmd.Name)
-	}
-
-	if cmd.Usage != "Show help information for commands" {
-		t.Errorf("NewHelpCommand() Usage incorrect")
-	}
-
-	if len(cmd.Aliases) == 0 || cmd.Aliases[0] != "h" {
-		t.Errorf("NewHelpCommand() should have alias 'h'")
-	}
-}
-
 // Test the commands with actual functionality (requires proper CLI setup)
 func TestCommandsWithTodoList(t *testing.T) {
 	_, cleanup := setupTestEnvironment(t)

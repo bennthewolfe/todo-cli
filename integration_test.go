@@ -100,7 +100,7 @@ func TestCLIIntegration(t *testing.T) {
 		{
 			name:           "help command",
 			args:           []string{"help"},
-			expectedOutput: "Todo is a simple command-line interface",
+			expectedOutput: "Todo CLI - A simple command-line interface",
 			expectError:    false,
 		},
 	}
@@ -272,7 +272,7 @@ func TestCLIHelp(t *testing.T) {
 			name: "general help",
 			args: []string{"help"},
 			expectedOutput: []string{
-				"Todo is a simple command-line interface",
+				"Todo CLI - A simple command-line interface",
 				"COMMANDS:",
 				"add",
 				"delete",
