@@ -267,11 +267,11 @@ func TestInitializeTodoListWithPath(t *testing.T) {
 	}
 
 	if todoList == nil {
-		t.Error("initializeTodoListWithPath() todoList is nil")
+		t.Fatal("initializeTodoListWithPath() todoList is nil")
 	}
 
 	if storage == nil {
-		t.Error("initializeTodoListWithPath() storage is nil")
+		t.Fatal("initializeTodoListWithPath() storage is nil")
 	}
 
 	// Add a task and verify it uses the custom path
