@@ -101,7 +101,7 @@ func TestStorage_LoadInvalidJSON(t *testing.T) {
 	testFile := filepath.Join(tempDir, "invalid.json")
 
 	// Create file with invalid JSON
-	err = os.WriteFile(testFile, []byte("invalid json content"), 0644)
+	err = os.WriteFile(testFile, []byte(`{"incomplete": "json"`), 0644)
 	if err != nil {
 		t.Fatalf("Failed to create test file: %v", err)
 	}
