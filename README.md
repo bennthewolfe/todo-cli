@@ -20,7 +20,7 @@ This based on the tutorial https://codingwithpatrik.dev/posts/how-to-build-a-cli
    ```bash
    cd todo-cli
    ```
-3. Build the application (to compile to exe):
+3. Build the application:
    ```bash
    go build -o todo.exe
    ```

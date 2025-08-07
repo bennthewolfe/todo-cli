@@ -11,7 +11,7 @@ import (
 // TestCLIIntegration tests the CLI application end-to-end
 func TestCLIIntegration(t *testing.T) {
 	// Build the CLI for testing
-	buildPath := filepath.Join(t.TempDir(), "todo-cli-test.exe")
+	buildPath := filepath.Join(t.TempDir(), "todo.exe")
 
 	cmd := exec.Command("go", "build", "-o", buildPath, ".")
 	if err := cmd.Run(); err != nil {
@@ -148,7 +148,7 @@ func TestCLIIntegration(t *testing.T) {
 // TestCLIWorkflow tests a complete workflow
 func TestCLIWorkflow(t *testing.T) {
 	// Build the CLI for testing
-	buildPath := filepath.Join(t.TempDir(), "todo-cli-test.exe")
+	buildPath := filepath.Join(t.TempDir(), "todo.exe")
 
 	cmd := exec.Command("go", "build", "-o", buildPath, ".")
 	if err := cmd.Run(); err != nil {
@@ -244,7 +244,7 @@ func TestCLIWorkflow(t *testing.T) {
 // TestCLIHelp tests help functionality
 func TestCLIHelp(t *testing.T) {
 	// Build the CLI for testing
-	buildPath := filepath.Join(t.TempDir(), "todo-cli-test.exe")
+	buildPath := filepath.Join(t.TempDir(), "todo.exe")
 
 	cmd := exec.Command("go", "build", "-o", buildPath, ".")
 	if err := cmd.Run(); err != nil {

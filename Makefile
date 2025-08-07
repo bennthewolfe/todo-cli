@@ -7,14 +7,14 @@ GOCLEAN=$(GOCMD) clean
 GOTEST=$(GOCMD) test
 GOGET=$(GOCMD) get
 GOMOD=$(GOCMD) mod
-BINARY_NAME=todo-cli
+BINARY_NAME=todo
 BINARY_WINDOWS=$(BINARY_NAME).exe
 
 # Test parameters
 TEST_PACKAGES=./...
 COVERAGE_FILE=coverage.out
 
-.PHONY: all build clean test coverage bench lint help
+.PHONY: all build clean test coverage bench bench-verbose lint help
 
 # Default target
 all: test build
@@ -49,7 +49,11 @@ test-integration:
 
 # Run benchmark tests
 bench:
-	$(GOTEST) -bench=. -benchmem $(TEST_PACKAGES)
+	$(GOTEST) -bench=Benchmark -benchmem -run=^$
+
+# Run benchmark tests with all tests (verbose)
+bench-verbose:
+	$(GOTEST) -bench=Benchmark -benchmem -v
 
 # Run tests with race condition detection
 test-race:
@@ -88,7 +92,8 @@ help:
 	@echo "  test-unit     - Run unit tests only"
 	@echo "  test-integration - Run integration tests only"
 	@echo "  coverage      - Run tests with coverage report"
-	@echo "  bench         - Run benchmark tests"
+	@echo "  bench         - Run benchmark tests only"
+	@echo "  bench-verbose - Run benchmark tests with all tests"
 	@echo "  test-race     - Run tests with race condition detection"
 	@echo "  lint          - Lint the code"
 	@echo "  fmt           - Format the code"

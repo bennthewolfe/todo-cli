@@ -108,6 +108,9 @@ go test -v -run TestCLI ./...
 # Run benchmark tests
 go test -bench=. -run=^$ .
 
+# Run benchmark tests with memory allocation stats
+go test -bench=Benchmark -benchmem -run=^$
+
 # Run tests with race condition detection
 go test -v -race ./...
 ```
@@ -125,7 +128,8 @@ Both build systems support the following targets with identical functionality:
 | `test-unit` | Run unit tests only |
 | `test-integration` | Run integration tests only |
 | `coverage` | Run tests with coverage report |
-| `bench` | Run benchmark tests |
+| `bench` | Run benchmark tests only |
+| `bench-verbose` | Run benchmark tests with all tests |
 | `test-race` | Run tests with race condition detection |
 | `lint` | Lint the code (requires golangci-lint) |
 | `fmt` / `format` | Format the code |
@@ -223,13 +227,23 @@ The test suite is designed to be CI-friendly:
 
 ## Performance Benchmarks
 
-Current benchmark results (example):
+Current benchmark results (as of August 6, 2025):
 ```
-BenchmarkTodoList_Add-8       2252169    503.7 ns/op
-BenchmarkTodoList_Delete-8    1000000000 0.0005644 ns/op
-BenchmarkStorage_Save-8       3859       296269 ns/op
-BenchmarkStorage_Load-8       4398       263024 ns/op
+goos: windows
+goarch: amd64
+pkg: github.com/bennthewolfe/todo-cli
+cpu: 11th Gen Intel(R) Core(TM) i7-1165G7 @ 2.80GHz
+BenchmarkTodoList_Add-8       2219103       516.7 ns/op     580 B/op       4 allocs/op
+BenchmarkTodoList_Delete-8   1000000000         0.0004443 ns/op       0 B/op       0 allocs/op
+BenchmarkStorage_Save-8          3231    319042 ns/op   42001 B/op       6 allocs/op
+BenchmarkStorage_Load-8          4354    284935 ns/op   49128 B/op     321 allocs/op
 ```
+
+### Benchmark Analysis
+- **Add Operation**: ~517 ns per operation with 4 memory allocations (580 bytes)
+- **Delete Operation**: Extremely fast at ~0.0004 ns per operation with zero allocations
+- **Storage Save**: ~319 μs per operation with 6 allocations (42KB)
+- **Storage Load**: ~285 μs per operation with 321 allocations (49KB)
 
 ## Adding New Tests
 

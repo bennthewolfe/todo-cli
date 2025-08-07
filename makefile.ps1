@@ -13,13 +13,13 @@ function All {
 
 function Build {
     Write-Host "Building application..." -ForegroundColor Green
-    go build -o todo-cli.exe -v .
+    go build -o todo.exe -v .
 }
 
 function Clean {
     Write-Host "Cleaning build files..." -ForegroundColor Green
     go clean
-    Remove-Item -Path "todo-cli.exe" -ErrorAction SilentlyContinue
+    Remove-Item -Path "todo.exe" -ErrorAction SilentlyContinue
     Remove-Item -Path "coverage.out" -ErrorAction SilentlyContinue
     Remove-Item -Path "coverage.html" -ErrorAction SilentlyContinue
 }
@@ -48,7 +48,12 @@ function Test-Integration {
 
 function Bench {
     Write-Host "Running benchmark tests..." -ForegroundColor Green
-    go test -bench=. -benchmem ./...
+    go test -bench=Benchmark -benchmem -run=^$
+}
+
+function Bench-Verbose {
+    Write-Host "Running benchmark tests with all tests..." -ForegroundColor Green
+    go test -bench=Benchmark -benchmem -v
 }
 
 function Test-Race {
@@ -108,7 +113,8 @@ function Show-Help {
     Write-Host "  test-unit     - Run unit tests only"
     Write-Host "  test-integration - Run integration tests only"
     Write-Host "  coverage      - Run tests with coverage report"
-    Write-Host "  bench         - Run benchmark tests"
+    Write-Host "  bench         - Run benchmark tests only"
+    Write-Host "  bench-verbose - Run benchmark tests with all tests"
     Write-Host "  test-race     - Run tests with race condition detection"
     Write-Host "  lint          - Lint the code"
     Write-Host "  fmt           - Format the code"
@@ -133,6 +139,7 @@ switch ($Target.ToLower()) {
     "test-unit" { Test-Unit }
     "test-integration" { Test-Integration }
     "bench" { Bench }
+    "bench-verbose" { Bench-Verbose }
     "test-race" { Test-Race }
     "format" { Format }
     "fmt" { Fmt }
