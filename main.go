@@ -1,58 +1,66 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"os"
 
 	commands "github.com/bennthewolfe/todo-cli/cmds"
+	"github.com/bennthewolfe/todo-cli/config"
+	"github.com/urfave/cli/v3"
 )
 
 func main() {
-	// Initialize todo list and storage
-	todoList := TodoList{}
+	app := &cli.Command{
+		Name:    "Todo CLI",
+		Usage:   "A simple command-line interface for managing todo items",
+		Version: config.Version,
+		Description: "Todo CLI is a command-line application for managing a to-do list. " +
+			"It allows users to add, view, and manage tasks efficiently. " +
+			"This project is inspired by the tutorial from https://codingwithpatrik.dev/posts/how-to-build-a-cli-todo-app-in-go/.",
 
-	storage := NewStorage[TodoList](".todos.json")
-	loadedList, err := storage.Load()
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error loading todos: %v\n", err)
-		os.Exit(1)
+		// Global flags
+		Flags: []cli.Flag{
+			&cli.BoolFlag{
+				Name:  "debug",
+				Usage: "Enable debug mode",
+			},
+		},
+
+		// Default action when no command is specified
+		Action: func(ctx context.Context, c *cli.Command) error {
+			if c.Bool("debug") {
+				fmt.Println("DEBUG: Debug mode enabled")
+				fmt.Printf("DEBUG: Args: %v\n", c.Args().Slice())
+			}
+			// Default to list command with table format
+			// Initialize todo list directly
+			todoList := &commands.TodoList{}
+			storage := commands.NewStorage[commands.TodoList](".todos.json")
+
+			loadedList, err := storage.Load()
+			if err != nil {
+				return cli.Exit(fmt.Sprintf("error loading todos: %v", err), 2)
+			}
+
+			*todoList = loadedList
+			todoList.View("table")
+			return nil
+		},
+
+		Commands: []*cli.Command{
+			commands.NewAddCommand(),
+			commands.NewDeleteCommand(),
+			commands.NewEditCommand(),
+			commands.NewListCommand(),
+			commands.NewToggleCommand(),
+			commands.NewVersionCommand(),
+			// Removed NewHelpCommand() - using urfave/cli built-in help instead
+		},
 	}
-	todoList = loadedList
 
-	args := os.Args[1:]
-
-	// Parse flags
-	commandFlags, additionalArgs := NewCmdFlag()
-
-	if commandFlags.Debug {
-		fmt.Println("DEBUG INFO (args):")
-		fmt.Printf("Args: %v\n", args)
-		fmt.Printf("Additional Args: %v\n", additionalArgs)
-		fmt.Printf("Flags: %+v\n", commandFlags)
-	}
-
-	// If no arguments provided, default to list command
-	if len(args) == 0 {
-		args = []string{"list"}
-	}
-
-	// Create command registry
-	registry := commands.GetRegistry()
-
-	// Execute the command
-	if err := registry.Execute(args[0], args[1:], &todoList); err != nil {
+	if err := app.Run(context.Background(), os.Args); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)
-	}
-
-	// Save the updated todo list
-	if err := storage.Save(todoList); err != nil {
-		fmt.Fprintf(os.Stderr, "Error saving todos: %v\n", err)
-		os.Exit(1)
-	}
-
-	// Check the --list flag and display the todo list if set
-	if commandFlags.List {
-		todoList.View("table")
 	}
 }

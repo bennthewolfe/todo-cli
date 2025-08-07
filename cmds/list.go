@@ -1,11 +1,57 @@
 package commands
 
 import (
+	"context"
 	"fmt"
 	"strings"
+
+	"github.com/urfave/cli/v3"
 )
 
-// ListCommand handles listing todo items
+// NewListCommand creates a new list command for urfave/cli
+func NewListCommand() *cli.Command {
+	return &cli.Command{
+		Name:    "list",
+		Usage:   "List all todo items",
+		Aliases: []string{"l", "ls"},
+		Flags: []cli.Flag{
+			&cli.StringFlag{
+				Name:    "format",
+				Aliases: []string{"f"},
+				Usage:   "Output format (table, json, pretty, none)",
+				Value:   "table",
+			},
+		},
+		Action: func(ctx context.Context, c *cli.Command) error {
+			format := c.String("format")
+
+			// Validate format
+			allowedFormats := []string{"table", "json", "pretty", "none"}
+			valid := false
+			for _, allowedFormat := range allowedFormats {
+				if format == allowedFormat {
+					valid = true
+					break
+				}
+			}
+
+			if !valid {
+				return cli.Exit(fmt.Sprintf("invalid format: %s. Allowed formats: %s", format, strings.Join(allowedFormats, ", ")), 1)
+			}
+
+			// Initialize todo list and storage
+			todoList, _, err := initializeTodoList()
+			if err != nil {
+				return cli.Exit(fmt.Sprintf("failed to initialize todo list: %v", err), 2)
+			}
+
+			todoList.View(format)
+			return nil
+		},
+	}
+}
+
+// Legacy command struct for backward compatibility
 type ListCommand struct{}
 
 func init() {
