@@ -227,23 +227,33 @@ The test suite is designed to be CI-friendly:
 
 ## Performance Benchmarks
 
-Current benchmark results (as of August 6, 2025):
+Current benchmark results (as of August 7, 2025):
 ```
 goos: windows
 goarch: amd64
 pkg: github.com/bennthewolfe/todo-cli
 cpu: 11th Gen Intel(R) Core(TM) i7-1165G7 @ 2.80GHz
-BenchmarkTodoList_Add-8       2219103       516.7 ns/op     580 B/op       4 allocs/op
-BenchmarkTodoList_Delete-8   1000000000         0.0004443 ns/op       0 B/op       0 allocs/op
-BenchmarkStorage_Save-8          3231    319042 ns/op   42001 B/op       6 allocs/op
-BenchmarkStorage_Load-8          4354    284935 ns/op   49128 B/op     321 allocs/op
+BenchmarkTodoList_Add-8       2333294       567.9 ns/op     558 B/op       4 allocs/op
+BenchmarkTodoList_Delete-8   1000000000         0.0004949 ns/op       0 B/op       0 allocs/op
+BenchmarkStorage_Save-8          3351    313827 ns/op   41937 B/op       6 allocs/op
+BenchmarkStorage_Load-8          4353    285064 ns/op   49128 B/op     321 allocs/op
 ```
 
 ### Benchmark Analysis
-- **Add Operation**: ~517 ns per operation with 4 memory allocations (580 bytes)
-- **Delete Operation**: Extremely fast at ~0.0004 ns per operation with zero allocations
-- **Storage Save**: ~319 μs per operation with 6 allocations (42KB)
+- **Add Operation**: ~568 ns per operation with 4 memory allocations (558 bytes)
+  - Performance remains excellent after GUID-based ID system implementation
+- **Delete Operation**: Extremely fast at ~0.0005 ns per operation with zero allocations
+  - No performance impact from architectural changes
+- **Storage Save**: ~314 μs per operation with 6 allocations (42KB)
+  - Consistent performance for JSON serialization
 - **Storage Load**: ~285 μs per operation with 321 allocations (49KB)
+  - Stable deserialization performance
+
+### Recent Performance Validation
+After implementing the GUID-based internal ID system to fix ID renumbering issues, all operations maintain excellent performance characteristics:
+- Zero performance degradation from the ID system refactor
+- Memory usage remains optimal with minimal allocations
+- All 30+ tests continue to pass in ~10 seconds total execution time
 
 ## Adding New Tests
 

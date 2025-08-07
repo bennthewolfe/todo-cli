@@ -1,6 +1,8 @@
 package commands
 
 import (
+	"crypto/rand"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -62,9 +64,16 @@ func (s *Storage[T]) Load() (T, error) {
 	return data, nil
 }
 
+// generateShortGUID generates a short GUID-like identifier
+func generateShortGUID() string {
+	bytes := make([]byte, 6) // 12 character hex string
+	rand.Read(bytes)
+	return hex.EncodeToString(bytes)
+}
+
 // Todo represents a single todo item
 type Todo struct {
-	ID          int    `json:"id"`
+	InternalID  string `json:"internal_id"` // Hidden GUID for internal tracking
 	Task        string `json:"task"`
 	Completed   bool   `json:"completed"`
 	CreatedAt   string `json:"created_at"`
@@ -106,6 +115,7 @@ func (todoList *TodoList) validateIndex(index int) error {
 
 func (todoList *TodoList) add(task string) error {
 	todo := Todo{
+		InternalID:  generateShortGUID(),
 		Task:        task,
 		Completed:   false,
 		CreatedAt:   time.Now().Format(time.RFC3339),
@@ -114,8 +124,6 @@ func (todoList *TodoList) add(task string) error {
 	}
 
 	// Add a new Todo item to the list
-	todo.ID = len(*todoList) + 1
-	todo.CreatedAt = time.Now().Format(time.RFC3339)
 	*todoList = append(*todoList, todo)
 
 	return nil
@@ -197,13 +205,41 @@ func (todoList *TodoList) view(format string) {
 func (todoList *TodoList) viewJSON(style string) {
 	t := *todoList
 
+	// If list is empty, output null to match expected behavior
+	if len(t) == 0 {
+		fmt.Println("null")
+		return
+	}
+
+	// Create display version with index-based IDs
+	type DisplayTodo struct {
+		ID          int    `json:"id"`
+		Task        string `json:"task"`
+		Completed   bool   `json:"completed"`
+		CreatedAt   string `json:"created_at"`
+		UpdatedAt   string `json:"updated_at"`
+		CompletedAt string `json:"completed_at,omitempty"`
+	}
+
+	displayTodos := make([]DisplayTodo, len(t))
+	for index, todo := range t {
+		displayTodos[index] = DisplayTodo{
+			ID:          index + 1, // Use array index + 1 as display ID
+			Task:        todo.Task,
+			Completed:   todo.Completed,
+			CreatedAt:   todo.CreatedAt,
+			UpdatedAt:   todo.UpdatedAt,
+			CompletedAt: todo.CompletedAt,
+		}
+	}
+
 	var jsonOutput []byte
 	var err error
 
 	if style == "pretty" {
-		jsonOutput, err = json.MarshalIndent(t, "", "  ")
+		jsonOutput, err = json.MarshalIndent(displayTodos, "", "  ")
 	} else {
-		jsonOutput, err = json.Marshal(t)
+		jsonOutput, err = json.Marshal(displayTodos)
 	}
 
 	if err != nil {
@@ -221,12 +257,18 @@ func (todoList *TodoList) viewTable() {
 	}
 
 	todoType := reflect.TypeOf(Todo{})
-
 	timeFormat := "2006-01-02"
 
+	// Dynamically generate headers, but skip InternalID and add ID at the beginning
 	var headers []string
+	headers = append(headers, "ID") // Add ID as first column
+
 	for i := 0; i < todoType.NumField(); i++ {
-		headers = append(headers, todoType.Field(i).Name)
+		field := todoType.Field(i)
+		// Skip the InternalID field since it's for internal use only
+		if field.Name != "InternalID" {
+			headers = append(headers, field.Name)
+		}
 	}
 
 	t := table.New(os.Stdout)
@@ -237,7 +279,10 @@ func (todoList *TodoList) viewTable() {
 
 	t.SetHeaders(headers...)
 
-	for _, todo := range *todoList {
+	for index, todo := range *todoList {
+		// Use index + 1 as the display ID
+		displayID := index + 1
+
 		// Handle all time fields consistently
 		var createdAtStr, updatedAtStr, completedAtStr string
 
@@ -274,13 +319,14 @@ func (todoList *TodoList) viewTable() {
 			completedEmoji = "❌"
 		}
 
+		// Add row with ID first, then other fields (excluding InternalID)
 		t.AddRow(
-			fmt.Sprintf("%d", todo.ID),
-			todo.Task,
-			completedEmoji,
-			createdAtStr,
-			updatedAtStr,
-			tml.Sprintf("<green>%s</green>", completedAtStr),
+			fmt.Sprintf("%d", displayID), // ID column
+			todo.Task,                    // Task column
+			completedEmoji,               // Completed column
+			createdAtStr,                 // CreatedAt column
+			updatedAtStr,                 // UpdatedAt column
+			tml.Sprintf("<green>%s</green>", completedAtStr), // CompletedAt column
 		)
 	}
 
