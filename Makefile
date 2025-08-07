@@ -26,7 +26,7 @@ all: test build
 
 # Build the application (Windows - for local development)
 build:
-	$(GOBUILD) -o $(BINARY_WINDOWS) -v .
+	$(MAKE) build-windows
 
 # Build for all platforms
 build-all: build-windows build-linux build-darwin

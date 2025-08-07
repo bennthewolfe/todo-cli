@@ -1,7 +1,7 @@
 # PowerShell build script for todo-cli project
 
 param(
-    [Parameter(Position=0)]
+    [Parameter(Position = 0)]
     [string]$Target = "help"
 )
 
@@ -12,8 +12,7 @@ function All {
 }
 
 function Build {
-    Write-Host "Building application (Windows exe for local development)..." -ForegroundColor Green
-    go build -o todo.exe -v .
+    Build-Windows
 }
 
 function Build-All {
@@ -133,7 +132,8 @@ function Lint {
     Write-Host "Linting code..." -ForegroundColor Green
     if (Get-Command golangci-lint -ErrorAction SilentlyContinue) {
         golangci-lint run
-    } else {
+    }
+    else {
         Write-Warning "golangci-lint not found. Install it with: go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest"
     }
 }
