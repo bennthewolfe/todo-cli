@@ -33,9 +33,19 @@ func main() {
 				fmt.Println("DEBUG: Debug mode enabled")
 				fmt.Printf("DEBUG: Args: %v\n", c.Args().Slice())
 			}
-			// Default to list command - manually call list command
-			listCmd := commands.NewListCommand()
-			return listCmd.Action(ctx, c)
+			// Default to list command with table format
+			// Initialize todo list directly
+			todoList := &commands.TodoList{}
+			storage := commands.NewStorage[commands.TodoList](".todos.json")
+
+			loadedList, err := storage.Load()
+			if err != nil {
+				return cli.Exit(fmt.Sprintf("error loading todos: %v", err), 2)
+			}
+
+			*todoList = loadedList
+			todoList.View("table")
+			return nil
 		},
 
 		Commands: []*cli.Command{
