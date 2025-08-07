@@ -25,6 +25,11 @@ func main() {
 				Name:  "debug",
 				Usage: "Enable debug mode",
 			},
+			&cli.BoolFlag{
+				Name:    "global",
+				Aliases: []string{"g"},
+				Usage:   "Use global todo storage in user's home directory (~/.todos/todos.json)",
+			},
 		},
 
 		// Default action when no command is specified
@@ -32,11 +37,19 @@ func main() {
 			if c.Bool("debug") {
 				fmt.Println("DEBUG: Debug mode enabled")
 				fmt.Printf("DEBUG: Args: %v\n", c.Args().Slice())
+				fmt.Printf("DEBUG: Global flag: %v\n", c.Bool("global"))
 			}
+
+			// Get the appropriate storage path
+			storagePath, err := commands.GetStoragePath(c.Bool("global"))
+			if err != nil {
+				return cli.Exit(fmt.Sprintf("error getting storage path: %v", err), 2)
+			}
+
 			// Default to list command with table format
 			// Initialize todo list directly
 			todoList := &commands.TodoList{}
-			storage := commands.NewStorage[commands.TodoList](".todos.json")
+			storage := commands.NewStorage[commands.TodoList](storagePath)
 
 			loadedList, err := storage.Load()
 			if err != nil {

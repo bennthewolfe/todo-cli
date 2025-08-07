@@ -2,6 +2,8 @@ package commands
 
 import (
 	"os"
+	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -175,5 +177,116 @@ func TestCommandsWithTodoList(t *testing.T) {
 
 	if loadedList[0].Task != "Test task" {
 		t.Errorf("Storage.Load() task = %s, want 'Test task'", loadedList[0].Task)
+	}
+}
+
+// TestGetStoragePath tests the GetStoragePath function
+func TestGetStoragePath(t *testing.T) {
+	tests := []struct {
+		name     string
+		global   bool
+		expected string
+	}{
+		{
+			name:     "local storage",
+			global:   false,
+			expected: ".todos.json",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if !tt.global {
+				// Test local storage path
+				path, err := GetStoragePath(tt.global)
+				if err != nil {
+					t.Errorf("GetStoragePath() error = %v", err)
+				}
+				if path != tt.expected {
+					t.Errorf("GetStoragePath() = %s, want %s", path, tt.expected)
+				}
+			}
+		})
+	}
+
+	// Test global storage path with mock home directory
+	t.Run("global storage", func(t *testing.T) {
+		// Create a temporary directory to use as mock home
+		tempDir, err := os.MkdirTemp("", "mock_home")
+		if err != nil {
+			t.Fatalf("Failed to create temp directory: %v", err)
+		}
+		defer os.RemoveAll(tempDir)
+
+		// Save original environment variables
+		oldHome := os.Getenv("HOME")
+		oldUserProfile := os.Getenv("USERPROFILE")
+		defer func() {
+			os.Setenv("HOME", oldHome)
+			os.Setenv("USERPROFILE", oldUserProfile)
+		}()
+
+		// Set mock home directory
+		os.Setenv("HOME", tempDir)
+		os.Setenv("USERPROFILE", tempDir)
+
+		// Test global storage path
+		path, err := GetStoragePath(true)
+		if err != nil {
+			t.Errorf("GetStoragePath() error = %v", err)
+		}
+
+		// Verify path contains expected components
+		if !strings.Contains(path, ".todos") {
+			t.Errorf("GetStoragePath() = %s, should contain '.todos'", path)
+		}
+		if !strings.Contains(path, "todos.json") {
+			t.Errorf("GetStoragePath() = %s, should contain 'todos.json'", path)
+		}
+
+		// Verify .todos directory was created
+		todosDirPath := filepath.Join(tempDir, ".todos")
+		if _, err := os.Stat(todosDirPath); os.IsNotExist(err) {
+			t.Errorf(".todos directory was not created at %s", todosDirPath)
+		}
+	})
+}
+
+// TestInitializeTodoListWithPath tests the initializeTodoListWithPath function
+func TestInitializeTodoListWithPath(t *testing.T) {
+	tempDir, cleanup := setupTestEnvironment(t)
+	defer cleanup()
+
+	// Create a custom storage file path
+	customPath := filepath.Join(tempDir, "custom.json")
+
+	// Initialize with custom path
+	todoList, storage, err := initializeTodoListWithPath(customPath)
+	if err != nil {
+		t.Errorf("initializeTodoListWithPath() error = %v", err)
+	}
+
+	if todoList == nil {
+		t.Error("initializeTodoListWithPath() todoList is nil")
+	}
+
+	if storage == nil {
+		t.Error("initializeTodoListWithPath() storage is nil")
+	}
+
+	// Add a task and verify it uses the custom path
+	err = todoList.Add("Test custom path")
+	if err != nil {
+		t.Errorf("TodoList.Add() error = %v", err)
+	}
+
+	err = storage.Save(*todoList)
+	if err != nil {
+		t.Errorf("Storage.Save() error = %v", err)
+	}
+
+	// Verify file was created at custom path
+	if _, err := os.Stat(customPath); os.IsNotExist(err) {
+		t.Errorf("Custom storage file was not created at %s", customPath)
 	}
 }

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"path/filepath"
 	"reflect"
 	"time"
 
@@ -286,10 +287,31 @@ func (todoList *TodoList) viewTable() {
 	t.Render()
 }
 
-// initializeTodoList initializes the todo list and storage
-func initializeTodoList() (*TodoList, *Storage[TodoList], error) {
+// GetStoragePath returns the appropriate storage path based on the global flag
+func GetStoragePath(isGlobal bool) (string, error) {
+	if !isGlobal {
+		return ".todos.json", nil
+	}
+
+	// Get user's home directory
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		return "", fmt.Errorf("unable to get user home directory: %w", err)
+	}
+
+	// Create ~/.todos directory if it doesn't exist
+	todosDir := filepath.Join(homeDir, ".todos")
+	if err := os.MkdirAll(todosDir, 0755); err != nil {
+		return "", fmt.Errorf("unable to create todos directory: %w", err)
+	}
+
+	return filepath.Join(todosDir, "todos.json"), nil
+}
+
+// initializeTodoList initializes the todo list and storage with custom path
+func initializeTodoListWithPath(storagePath string) (*TodoList, *Storage[TodoList], error) {
 	todoList := &TodoList{}
-	storage := NewStorage[TodoList](".todos.json")
+	storage := NewStorage[TodoList](storagePath)
 
 	loadedList, err := storage.Load()
 	if err != nil {
@@ -298,4 +320,9 @@ func initializeTodoList() (*TodoList, *Storage[TodoList], error) {
 
 	*todoList = loadedList
 	return todoList, storage, nil
+}
+
+// initializeTodoList initializes the todo list and storage (legacy function for compatibility)
+func initializeTodoList() (*TodoList, *Storage[TodoList], error) {
+	return initializeTodoListWithPath(".todos.json")
 }

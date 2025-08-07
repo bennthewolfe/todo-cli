@@ -33,8 +33,14 @@ func NewEditCommand() *cli.Command {
 			// Join all arguments after the ID as the new task
 			newTask := strings.Join(c.Args().Slice()[1:], " ")
 
+			// Get the appropriate storage path based on global flag
+			storagePath, err := GetStoragePath(c.Bool("global"))
+			if err != nil {
+				return cli.Exit(fmt.Sprintf("error getting storage path: %v", err), 2)
+			}
+
 			// Initialize todo list and storage
-			todoList, storage, err := initializeTodoList()
+			todoList, storage, err := initializeTodoListWithPath(storagePath)
 			if err != nil {
 				return cli.Exit(fmt.Sprintf("failed to initialize todo list: %v", err), 2)
 			}

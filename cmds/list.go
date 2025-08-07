@@ -39,8 +39,14 @@ func NewListCommand() *cli.Command {
 				return cli.Exit(fmt.Sprintf("invalid format: %s. Allowed formats: %s", format, strings.Join(allowedFormats, ", ")), 1)
 			}
 
+			// Get the appropriate storage path based on global flag
+			storagePath, err := GetStoragePath(c.Bool("global"))
+			if err != nil {
+				return cli.Exit(fmt.Sprintf("error getting storage path: %v", err), 2)
+			}
+
 			// Initialize todo list and storage
-			todoList, _, err := initializeTodoList()
+			todoList, _, err := initializeTodoListWithPath(storagePath)
 			if err != nil {
 				return cli.Exit(fmt.Sprintf("failed to initialize todo list: %v", err), 2)
 			}

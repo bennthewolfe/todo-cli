@@ -311,3 +311,181 @@ func TestCLIHelp(t *testing.T) {
 		})
 	}
 }
+
+// TestCLIGlobalStorage tests the global storage functionality
+func TestCLIGlobalStorage(t *testing.T) {
+	// Build the CLI for testing
+	buildPath := filepath.Join(t.TempDir(), "todo.exe")
+
+	cmd := exec.Command("go", "build", "-o", buildPath, ".")
+	if err := cmd.Run(); err != nil {
+		t.Fatalf("Failed to build CLI: %v", err)
+	}
+
+	// Create temp directory for test data
+	tempDir, err := os.MkdirTemp("", "todo_global_test")
+	if err != nil {
+		t.Fatalf("Failed to create temp directory: %v", err)
+	}
+	defer os.RemoveAll(tempDir)
+
+	// Create a mock home directory for testing
+	mockHomeDir := filepath.Join(tempDir, "home")
+	if err := os.MkdirAll(mockHomeDir, 0755); err != nil {
+		t.Fatalf("Failed to create mock home directory: %v", err)
+	}
+
+	// Set HOME environment variable for the test
+	oldHome := os.Getenv("HOME")
+	oldUserProfile := os.Getenv("USERPROFILE")
+	defer func() {
+		os.Setenv("HOME", oldHome)
+		os.Setenv("USERPROFILE", oldUserProfile)
+	}()
+	os.Setenv("HOME", mockHomeDir)
+	os.Setenv("USERPROFILE", mockHomeDir)
+
+	// Change to temp directory for local storage
+	oldWd, _ := os.Getwd()
+	defer os.Chdir(oldWd)
+	os.Chdir(tempDir)
+
+	// Test adding todo to global storage
+	t.Run("add_global_todo", func(t *testing.T) {
+		cmd := exec.Command(buildPath, "--global", "add", "Global test task")
+		output, err := cmd.CombinedOutput()
+		if err != nil {
+			t.Fatalf("Failed to add global todo: %v\nOutput: %s", err, output)
+		}
+
+		expectedMsg := "Added task: Global test task"
+		if !strings.Contains(string(output), expectedMsg) {
+			t.Errorf("Expected %q in output, got: %s", expectedMsg, output)
+		}
+
+		// Verify global storage file was created
+		globalStoragePath := filepath.Join(mockHomeDir, ".todos", "todos.json")
+		if _, err := os.Stat(globalStoragePath); os.IsNotExist(err) {
+			t.Errorf("Global storage file was not created at %s", globalStoragePath)
+		}
+	})
+
+	// Test listing global todos
+	t.Run("list_global_todos", func(t *testing.T) {
+		cmd := exec.Command(buildPath, "--global", "list")
+		output, err := cmd.CombinedOutput()
+		if err != nil {
+			t.Fatalf("Failed to list global todos: %v\nOutput: %s", err, output)
+		}
+
+		outputStr := string(output)
+		if !strings.Contains(outputStr, "Global test task") {
+			t.Errorf("Expected global todo in output, got: %s", outputStr)
+		}
+	})
+
+	// Test adding local todo
+	t.Run("add_local_todo", func(t *testing.T) {
+		cmd := exec.Command(buildPath, "add", "Local test task")
+		output, err := cmd.CombinedOutput()
+		if err != nil {
+			t.Fatalf("Failed to add local todo: %v\nOutput: %s", err, output)
+		}
+
+		expectedMsg := "Added task: Local test task"
+		if !strings.Contains(string(output), expectedMsg) {
+			t.Errorf("Expected %q in output, got: %s", expectedMsg, output)
+		}
+	})
+
+	// Test that local and global storage are separate
+	t.Run("storage_separation", func(t *testing.T) {
+		// List local todos
+		cmd := exec.Command(buildPath, "list")
+		output, err := cmd.CombinedOutput()
+		if err != nil {
+			t.Fatalf("Failed to list local todos: %v\nOutput: %s", err, output)
+		}
+
+		localOutput := string(output)
+		if !strings.Contains(localOutput, "Local test task") {
+			t.Errorf("Expected local todo in local output, got: %s", localOutput)
+		}
+		if strings.Contains(localOutput, "Global test task") {
+			t.Errorf("Global todo should not appear in local output, got: %s", localOutput)
+		}
+
+		// List global todos
+		cmd = exec.Command(buildPath, "--global", "list")
+		output, err = cmd.CombinedOutput()
+		if err != nil {
+			t.Fatalf("Failed to list global todos: %v\nOutput: %s", err, output)
+		}
+
+		globalOutput := string(output)
+		if !strings.Contains(globalOutput, "Global test task") {
+			t.Errorf("Expected global todo in global output, got: %s", globalOutput)
+		}
+		if strings.Contains(globalOutput, "Local test task") {
+			t.Errorf("Local todo should not appear in global output, got: %s", globalOutput)
+		}
+	})
+
+	// Test default action with global flag
+	t.Run("default_action_global", func(t *testing.T) {
+		cmd := exec.Command(buildPath, "--global")
+		output, err := cmd.CombinedOutput()
+		if err != nil {
+			t.Fatalf("Failed to run default action with global flag: %v\nOutput: %s", err, output)
+		}
+
+		outputStr := string(output)
+		if !strings.Contains(outputStr, "Global test task") {
+			t.Errorf("Expected global todo in default action output, got: %s", outputStr)
+		}
+	})
+
+	// Test global flag with other commands
+	t.Run("global_toggle", func(t *testing.T) {
+		cmd := exec.Command(buildPath, "--global", "toggle", "1")
+		output, err := cmd.CombinedOutput()
+		if err != nil {
+			t.Fatalf("Failed to toggle global todo: %v\nOutput: %s", err, output)
+		}
+
+		// Verify the todo was toggled
+		cmd = exec.Command(buildPath, "--global", "list", "--format", "json")
+		output, err = cmd.CombinedOutput()
+		if err != nil {
+			t.Fatalf("Failed to list global todos after toggle: %v\nOutput: %s", err, output)
+		}
+
+		outputStr := string(output)
+		if !strings.Contains(outputStr, `"completed":true`) {
+			t.Errorf("Expected todo to be marked as completed, got: %s", outputStr)
+		}
+	})
+
+	// Test help contains global flag information
+	t.Run("help_contains_global_flag", func(t *testing.T) {
+		cmd := exec.Command(buildPath, "--help")
+		output, err := cmd.CombinedOutput()
+		if err != nil {
+			t.Fatalf("Failed to get help: %v\nOutput: %s", err, output)
+		}
+
+		outputStr := string(output)
+		expectedTexts := []string{
+			"--global",
+			"-g",
+			"global todo storage",
+			"home directory",
+		}
+
+		for _, expected := range expectedTexts {
+			if !strings.Contains(outputStr, expected) {
+				t.Errorf("Expected help to contain %q, got: %s", expected, outputStr)
+			}
+		}
+	})
+}

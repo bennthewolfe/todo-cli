@@ -23,8 +23,14 @@ func NewAddCommand() *cli.Command {
 			// Join all arguments as the task description
 			task := strings.Join(c.Args().Slice(), " ")
 
+			// Get the appropriate storage path based on global flag
+			storagePath, err := GetStoragePath(c.Bool("global"))
+			if err != nil {
+				return cli.Exit(fmt.Sprintf("error getting storage path: %v", err), 2)
+			}
+
 			// Initialize todo list and storage
-			todoList, storage, err := initializeTodoList()
+			todoList, storage, err := initializeTodoListWithPath(storagePath)
 			if err != nil {
 				return cli.Exit(fmt.Sprintf("failed to initialize todo list: %v", err), 2)
 			}

@@ -29,8 +29,14 @@ func NewDeleteCommand() *cli.Command {
 				return cli.Exit("ID must be greater than 0", 1)
 			}
 
+			// Get the appropriate storage path based on global flag
+			storagePath, err := GetStoragePath(c.Bool("global"))
+			if err != nil {
+				return cli.Exit(fmt.Sprintf("error getting storage path: %v", err), 2)
+			}
+
 			// Initialize todo list and storage
-			todoList, storage, err := initializeTodoList()
+			todoList, storage, err := initializeTodoListWithPath(storagePath)
 			if err != nil {
 				return cli.Exit(fmt.Sprintf("failed to initialize todo list: %v", err), 2)
 			}
