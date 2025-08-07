@@ -100,7 +100,7 @@ func (todoList *TodoList) View(format string) {
 func (todoList *TodoList) validateIndex(index int) error {
 	if index < 0 || index >= len(*todoList) {
 		err := errors.New("invalid index")
-		return fmt.Errorf(err.Error(), "%d", index)
+		return fmt.Errorf("invalid index: %d", index)
 	}
 	return nil
 }
