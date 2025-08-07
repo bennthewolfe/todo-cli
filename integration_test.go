@@ -185,6 +185,9 @@ func TestCLIWorkflow(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to add second task: %v", err)
 	}
+	if !strings.Contains(string(output), "Added task: Walk the dog") {
+		t.Errorf("Second add command output unexpected: %s", output)
+	}
 
 	// 3. List tasks in JSON format
 	cmd = exec.Command(buildPath, "list", "--format", "json")
@@ -202,12 +205,18 @@ func TestCLIWorkflow(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to edit task: %v", err)
 	}
+	if !strings.Contains(string(output), "Updated todo item 1") {
+		t.Errorf("Edit command output unexpected: %s", output)
+	}
 
 	// 5. Toggle first task to completed
 	cmd = exec.Command(buildPath, "toggle", "1")
 	output, err = cmd.CombinedOutput()
 	if err != nil {
 		t.Fatalf("Failed to toggle task: %v", err)
+	}
+	if !strings.Contains(string(output), "Toggled completion status for todo item with ID: 1") {
+		t.Errorf("Toggle command output unexpected: %s", output)
 	}
 
 	// 6. Verify task is completed
@@ -225,6 +234,9 @@ func TestCLIWorkflow(t *testing.T) {
 	output, err = cmd.CombinedOutput()
 	if err != nil {
 		t.Fatalf("Failed to delete task: %v", err)
+	}
+	if !strings.Contains(string(output), "Deleted todo item with ID: 2") {
+		t.Errorf("Delete command output unexpected: %s", output)
 	}
 
 	// 8. Verify only one task remains
