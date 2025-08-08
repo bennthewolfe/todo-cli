@@ -345,13 +345,13 @@ func GetStoragePath(isGlobal bool) (string, error) {
 		return "", fmt.Errorf("unable to get user home directory: %w", err)
 	}
 
-	// Create ~/.todos directory if it doesn't exist
-	todosDir := filepath.Join(homeDir, ".todos")
-	if err := os.MkdirAll(todosDir, 0755); err != nil {
-		return "", fmt.Errorf("unable to create todos directory: %w", err)
+	// Create ~/.todo directory if it doesn't exist
+	todoDir := filepath.Join(homeDir, ".todo")
+	if err := os.MkdirAll(todoDir, 0755); err != nil {
+		return "", fmt.Errorf("unable to create todo directory: %w", err)
 	}
 
-	return filepath.Join(todosDir, "todos.json"), nil
+	return filepath.Join(todoDir, "todos.json"), nil
 }
 
 // initializeTodoList initializes the todo list and storage with custom path

@@ -237,17 +237,17 @@ func TestGetStoragePath(t *testing.T) {
 		}
 
 		// Verify path contains expected components
-		if !strings.Contains(path, ".todos") {
-			t.Errorf("GetStoragePath() = %s, should contain '.todos'", path)
+		if !strings.Contains(path, ".todo") {
+			t.Errorf("GetStoragePath() = %s, should contain '.todo'", path)
 		}
 		if !strings.Contains(path, "todos.json") {
 			t.Errorf("GetStoragePath() = %s, should contain 'todos.json'", path)
 		}
 
-		// Verify .todos directory was created
-		todosDirPath := filepath.Join(tempDir, ".todos")
-		if _, err := os.Stat(todosDirPath); os.IsNotExist(err) {
-			t.Errorf(".todos directory was not created at %s", todosDirPath)
+		// Verify .todo directory was created
+		todoDirPath := filepath.Join(tempDir, ".todo")
+		if _, err := os.Stat(todoDirPath); os.IsNotExist(err) {
+			t.Errorf(".todo directory was not created at %s", todoDirPath)
 		}
 	})
 }

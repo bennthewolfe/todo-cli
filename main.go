@@ -28,7 +28,7 @@ func main() {
 			&cli.BoolFlag{
 				Name:    "global",
 				Aliases: []string{"g"},
-				Usage:   "Use global todo storage in user's home directory (~/.todos/todos.json)",
+				Usage:   "Use global todo storage in user's home directory (~/.todo/todos.json)",
 			},
 		},
 

@@ -364,7 +364,7 @@ func TestCLIGlobalStorage(t *testing.T) {
 		}
 
 		// Verify global storage file was created
-		globalStoragePath := filepath.Join(mockHomeDir, ".todos", "todos.json")
+		globalStoragePath := filepath.Join(mockHomeDir, ".todo", "todos.json")
 		if _, err := os.Stat(globalStoragePath); os.IsNotExist(err) {
 			t.Errorf("Global storage file was not created at %s", globalStoragePath)
 		}

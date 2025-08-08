@@ -20,7 +20,7 @@ This based on the tutorial https://codingwithpatrik.dev/posts/how-to-build-a-cli
 By default, todos are stored in `.todos.json` in the current working directory.
 
 ### Global Storage
-Use the `--global` or `-g` flag to store todos in your user home directory at `~/.todos/todos.json`. This allows you to access your todos from anywhere on your system.
+Use the `--global` or `-g` flag to store todos in your user home directory at `~/.todo/todos.json`. This allows you to access your todos from anywhere on your system.
 
 ```bash
 # Add a todo to global storage
@@ -165,6 +165,6 @@ make coverage
 ## Storage Locations
 
 - **Local**: `.todos.json` in the current working directory
-- **Global**: `~/.todos/todos.json` in the user's home directory
+- **Global**: `~/.todo/todos.json` in the user's home directory
 
-The global storage directory (`~/.todos/`) is automatically created when first used and can be used for future configuration files and extensions.
+The global storage directory (`~/.todo/`) is automatically created when first used and can be used for future configuration files and extensions.

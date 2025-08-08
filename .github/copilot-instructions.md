@@ -1,7 +1,7 @@
 # Todo CLI - Copilot Repository Instructions
 
 ## Project Overview
-This is a **Todo CLI application** written in **Go 1.24.5** using the `urfave/cli/v3` framework. It manages todo items with support for adding, editing, deleting, toggling completion, and listing tasks. Data is stored as JSON either locally (`.todos.json`) or globally (`~/.todos/todos.json`). The project emphasizes high-quality code with comprehensive testing and dual build system support.
+This is a **Todo CLI application** written in **Go 1.24.5** using the `urfave/cli/v3` framework. It manages todo items with support for adding, editing, deleting, toggling completion, and listing tasks. Data is stored as JSON either locally (`.todos.json`) or globally (`~/.todo/todos.json`). The project emphasizes high-quality code with comprehensive testing and dual build system support.
 
 **Repository Size**: ~50 files, 6.5MB binary output  
 **Languages**: Go (primary), PowerShell, Makefile  
@@ -170,7 +170,7 @@ Commands: []*cli.Command{
 
 ### Storage Architecture
 - **Local**: `.todos.json` in current directory
-- **Global**: `~/.todos/todos.json` in user home (use `--global` or `-g`)
+- **Global**: `~/.todo/todos.json` in user home (use `--global` or `-g`)
 - **Format**: JSON with GUID-based IDs, timestamps, completion status
 - **Load/Save**: Generic storage layer in `storage.go`
 
@@ -221,7 +221,7 @@ func NewXCommand() *cli.Command {
 
 ### Global Flags (available on all commands)
 - `--debug`: Enable verbose debug output
-- `--global`, `-g`: Use global storage in `~/.todos/todos.json`
+- `--global`, `-g`: Use global storage in `~/.todo/todos.json`
 
 ### Error Handling Standards
 - Use `cli.Exit(message, code)` for user-facing errors
@@ -306,7 +306,7 @@ require (
 ### Runtime Issues  
 - **Storage errors**: Check file permissions, ensure directory exists
 - **JSON errors**: Validate `.todos.json` is not corrupted
-- **Global storage**: `~/.todos/` directory created automatically
+- **Global storage**: `~/.todo/` directory created automatically
 
 ## Key Files to Reference
 
