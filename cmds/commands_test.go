@@ -155,7 +155,7 @@ func TestCleanupCommand_Creation(t *testing.T) {
 		t.Errorf("NewCleanupCommand() Name = %s, want 'cleanup'", cmd.Name)
 	}
 
-	if cmd.Usage != "Archive all completed todo items (moves to archive file)" {
+	if cmd.Usage != "Archive or delete all completed todo items" {
 		t.Errorf("NewCleanupCommand() Usage incorrect")
 	}
 
@@ -165,17 +165,28 @@ func TestCleanupCommand_Creation(t *testing.T) {
 
 	// Check for --force flag
 	hasForceFlag := false
+	hasDeleteFlag := false
 	for _, flag := range cmd.Flags {
-		if boolFlag, ok := flag.(*cli.BoolFlag); ok && boolFlag.Name == "force" {
-			hasForceFlag = true
-			if len(boolFlag.Aliases) == 0 || boolFlag.Aliases[0] != "f" {
-				t.Errorf("NewCleanupCommand() --force flag should have alias 'f'")
+		if boolFlag, ok := flag.(*cli.BoolFlag); ok {
+			if boolFlag.Name == "force" {
+				hasForceFlag = true
+				if len(boolFlag.Aliases) == 0 || boolFlag.Aliases[0] != "f" {
+					t.Errorf("NewCleanupCommand() --force flag should have alias 'f'")
+				}
 			}
-			break
+			if boolFlag.Name == "delete" {
+				hasDeleteFlag = true
+				if len(boolFlag.Aliases) == 0 || boolFlag.Aliases[0] != "d" {
+					t.Errorf("NewCleanupCommand() --delete flag should have alias 'd'")
+				}
+			}
 		}
 	}
 	if !hasForceFlag {
 		t.Errorf("NewCleanupCommand() should have --force flag")
+	}
+	if !hasDeleteFlag {
+		t.Errorf("NewCleanupCommand() should have --delete flag")
 	}
 }
 

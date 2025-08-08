@@ -969,6 +969,78 @@ func TestCLICleanup(t *testing.T) {
 		}
 	})
 
+	t.Run("cleanup_with_delete_flag", func(t *testing.T) {
+		// Clean up any existing todos first
+		os.Remove(".todos.json")
+		os.Remove(".todos.archive.json")
+
+		// Add and complete some items for delete testing
+		cmd := exec.Command(buildPath, "add", "Delete test task 1")
+		if err := cmd.Run(); err != nil {
+			t.Fatalf("Failed to add task: %v", err)
+		}
+
+		cmd = exec.Command(buildPath, "add", "Delete test task 2")
+		if err := cmd.Run(); err != nil {
+			t.Fatalf("Failed to add task: %v", err)
+		}
+
+		cmd = exec.Command(buildPath, "add", "Keep this task")
+		if err := cmd.Run(); err != nil {
+			t.Fatalf("Failed to add task: %v", err)
+		}
+
+		// Complete first two tasks (they should be IDs 1 and 2)
+		cmd = exec.Command(buildPath, "toggle", "1")
+		if err := cmd.Run(); err != nil {
+			t.Fatalf("Failed to toggle task 1: %v", err)
+		}
+
+		cmd = exec.Command(buildPath, "toggle", "2")
+		if err := cmd.Run(); err != nil {
+			t.Fatalf("Failed to toggle task 2: %v", err)
+		}
+
+		// Run cleanup with --delete and --force
+		cmd = exec.Command(buildPath, "cleanup", "--delete", "--force")
+		output, err := cmd.CombinedOutput()
+		if err != nil {
+			t.Fatalf("Failed to run cleanup --delete: %v\nOutput: %s", err, output)
+		}
+
+		outputStr := string(output)
+		if !strings.Contains(outputStr, "Successfully deleted 2 completed item(s)") {
+			t.Errorf("Expected delete success message for 2 items, got: %s", outputStr)
+		}
+
+		// Verify remaining todos only contains incomplete items
+		cmd = exec.Command(buildPath, "list", "--format", "json")
+		output, err = cmd.CombinedOutput()
+		if err != nil {
+			t.Fatalf("Failed to list remaining todos: %v\nOutput: %s", err, output)
+		}
+
+		outputStr = string(output)
+		if strings.Contains(outputStr, "Delete test task 1") || strings.Contains(outputStr, "Delete test task 2") {
+			t.Errorf("Deleted tasks should not appear in list, got: %s", outputStr)
+		}
+		if !strings.Contains(outputStr, "Keep this task") {
+			t.Errorf("Incomplete task should remain, got: %s", outputStr)
+		}
+
+		// Verify that no archive file was created (since we deleted, not archived)
+		if _, err := os.Stat(".todos.archive.json"); err == nil {
+			// Archive file exists, but check if our deleted items are NOT in it
+			archiveContent, err := os.ReadFile(".todos.archive.json")
+			if err == nil {
+				archiveStr := string(archiveContent)
+				if strings.Contains(archiveStr, "Delete test task 1") || strings.Contains(archiveStr, "Delete test task 2") {
+					t.Errorf("Deleted tasks should not be in archive file, got: %s", archiveStr)
+				}
+			}
+		}
+	})
+
 	t.Run("help_contains_cleanup_command", func(t *testing.T) {
 		cmd := exec.Command(buildPath, "help")
 		output, err := cmd.CombinedOutput()
@@ -979,7 +1051,7 @@ func TestCLICleanup(t *testing.T) {
 		expectedHelp := []string{
 			"cleanup",
 			"clean",
-			"Archive all completed todo items",
+			"Archive or delete all completed todo items",
 		}
 
 		outputStr := string(output)
