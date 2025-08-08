@@ -35,6 +35,11 @@ func main() {
 				Aliases: []string{"l"},
 				Usage:   "List all todo items (overrides other commands)",
 			},
+			&cli.BoolFlag{
+				Name:    "archive",
+				Aliases: []string{"a"},
+				Usage:   "Work with archive files instead of main todo list (only list and delete commands supported)",
+			},
 		},
 
 		// Default action when no command is specified

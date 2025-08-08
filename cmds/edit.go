@@ -17,6 +17,11 @@ func NewEditCommand() *cli.Command {
 		Aliases:   []string{"e"},
 		ArgsUsage: "<id> <new_task>",
 		Action: func(ctx context.Context, c *cli.Command) error {
+			// Validate archive flag usage
+			if err := ValidateArchiveFlagUsage(c, "edit"); err != nil {
+				return cli.Exit(err.Error(), 1)
+			}
+
 			if c.Args().Len() < 2 {
 				return cli.Exit("ID and new task description are required", 1)
 			}

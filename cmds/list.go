@@ -23,6 +23,11 @@ func NewListCommand() *cli.Command {
 			},
 		},
 		Action: func(ctx context.Context, c *cli.Command) error {
+			// Validate archive flag usage
+			if err := ValidateArchiveFlagUsage(c, "list"); err != nil {
+				return cli.Exit(err.Error(), 1)
+			}
+
 			// Check for --list flag - for list command, this should not change behavior
 			// But we still check to handle it consistently
 			if c.Bool("list") && c.Bool("debug") {
@@ -45,8 +50,8 @@ func NewListCommand() *cli.Command {
 				return cli.Exit(fmt.Sprintf("invalid format: %s. Allowed formats: %s", format, strings.Join(allowedFormats, ", ")), 1)
 			}
 
-			// Get the appropriate storage path based on global flag
-			storagePath, err := GetStoragePath(c.Bool("global"))
+			// Get the appropriate storage path based on global and archive flags
+			storagePath, err := GetEffectiveStoragePath(c.Bool("global"), c.Bool("archive"))
 			if err != nil {
 				return cli.Exit(fmt.Sprintf("error getting storage path: %v", err), 2)
 			}

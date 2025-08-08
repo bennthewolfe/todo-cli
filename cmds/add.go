@@ -16,6 +16,11 @@ func NewAddCommand() *cli.Command {
 		Aliases:   []string{"a"},
 		ArgsUsage: "<task>",
 		Action: func(ctx context.Context, c *cli.Command) error {
+			// Validate archive flag usage
+			if err := ValidateArchiveFlagUsage(c, "add"); err != nil {
+				return cli.Exit(err.Error(), 1)
+			}
+
 			if c.Args().Len() == 0 {
 				return cli.Exit("task description is required", 1)
 			}

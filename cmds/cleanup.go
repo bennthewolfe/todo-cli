@@ -30,6 +30,11 @@ func NewCleanupCommand() *cli.Command {
 			},
 		},
 		Action: func(ctx context.Context, c *cli.Command) error {
+			// Validate archive flag usage
+			if err := ValidateArchiveFlagUsage(c, "cleanup"); err != nil {
+				return err
+			}
+
 			// Determine the action based on flags
 			isDelete := c.Bool("delete")
 

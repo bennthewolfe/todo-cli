@@ -1154,3 +1154,250 @@ func TestCLIGlobalCleanup(t *testing.T) {
 		}
 	})
 }
+
+// TestCLIArchiveFlag tests the --archive global flag functionality
+func TestCLIArchiveFlag(t *testing.T) {
+	// Build the CLI for testing
+	buildPath := filepath.Join(t.TempDir(), "todo.exe")
+
+	cmd := exec.Command("go", "build", "-o", buildPath, ".")
+	if err := cmd.Run(); err != nil {
+		t.Fatalf("Failed to build CLI: %v", err)
+	}
+
+	// Create temp directory for test data
+	tempDir, err := os.MkdirTemp("", "todo_archive_flag_test")
+	if err != nil {
+		t.Fatalf("Failed to create temp directory: %v", err)
+	}
+	defer os.RemoveAll(tempDir)
+
+	// Change to temp directory
+	oldWd, _ := os.Getwd()
+	defer os.Chdir(oldWd)
+	os.Chdir(tempDir)
+
+	// Clean up any existing files
+	os.Remove(".todos.json")
+	os.Remove(".todos.archive.json")
+
+	t.Run("archive_flag_with_list_command", func(t *testing.T) {
+		// Create some archive data
+		archiveData := `[
+			{"internal_id":"test1","task":"Archived task 1","completed":true,"created_at":"2025-08-08T00:00:00Z","updated_at":"2025-08-08T00:00:00Z","completed_at":"2025-08-08T00:00:00Z"},
+			{"internal_id":"test2","task":"Archived task 2","completed":true,"created_at":"2025-08-08T00:00:00Z","updated_at":"2025-08-08T00:00:00Z","completed_at":"2025-08-08T00:00:00Z"}
+		]`
+		err := os.WriteFile(".todos.archive.json", []byte(archiveData), 0644)
+		if err != nil {
+			t.Fatalf("Failed to create archive file: %v", err)
+		}
+
+		// Test listing archive with --archive flag
+		cmd := exec.Command(buildPath, "--archive", "list", "--format", "json")
+		output, err := cmd.CombinedOutput()
+		if err != nil {
+			t.Fatalf("Failed to run --archive list: %v\nOutput: %s", err, output)
+		}
+
+		outputStr := string(output)
+		if !strings.Contains(outputStr, "Archived task 1") || !strings.Contains(outputStr, "Archived task 2") {
+			t.Errorf("Expected archived tasks in output, got: %s", outputStr)
+		}
+	})
+
+	t.Run("archive_flag_with_delete_command", func(t *testing.T) {
+		// Test deleting from archive
+		cmd := exec.Command(buildPath, "--archive", "delete", "1")
+		output, err := cmd.CombinedOutput()
+		if err != nil {
+			t.Fatalf("Failed to run --archive delete: %v\nOutput: %s", err, output)
+		}
+
+		if !strings.Contains(string(output), "Deleted todo item with ID: 1") {
+			t.Errorf("Expected delete confirmation, got: %s", output)
+		}
+
+		// Verify item was deleted
+		cmd = exec.Command(buildPath, "--archive", "list", "--format", "json")
+		output, err = cmd.CombinedOutput()
+		if err != nil {
+			t.Fatalf("Failed to list archive after delete: %v\nOutput: %s", err, output)
+		}
+
+		outputStr := string(output)
+		if strings.Contains(outputStr, "Archived task 1") {
+			t.Errorf("Deleted task should not appear in archive, got: %s", outputStr)
+		}
+		if !strings.Contains(outputStr, "Archived task 2") {
+			t.Errorf("Remaining task should still be in archive, got: %s", outputStr)
+		}
+	})
+
+	t.Run("archive_flag_blocks_unsupported_commands", func(t *testing.T) {
+		// Test that add command is blocked
+		cmd := exec.Command(buildPath, "--archive", "add", "Should fail")
+		output, err := cmd.CombinedOutput()
+		if err == nil {
+			t.Errorf("Expected error when using --archive with add command")
+		}
+
+		if !strings.Contains(string(output), "--archive flag is only supported with 'list' and 'delete' commands") {
+			t.Errorf("Expected validation error message, got: %s", output)
+		}
+
+		// Test that toggle command is blocked
+		cmd = exec.Command(buildPath, "--archive", "toggle", "1")
+		output, err = cmd.CombinedOutput()
+		if err == nil {
+			t.Errorf("Expected error when using --archive with toggle command")
+		}
+
+		if !strings.Contains(string(output), "--archive flag is only supported with 'list' and 'delete' commands") {
+			t.Errorf("Expected validation error message, got: %s", output)
+		}
+
+		// Test that edit command is blocked
+		cmd = exec.Command(buildPath, "--archive", "edit", "1", "Should fail")
+		output, err = cmd.CombinedOutput()
+		if err == nil {
+			t.Errorf("Expected error when using --archive with edit command")
+		}
+
+		if !strings.Contains(string(output), "--archive flag is only supported with 'list' and 'delete' commands") {
+			t.Errorf("Expected validation error message, got: %s", output)
+		}
+
+		// Test that archive command is blocked
+		cmd = exec.Command(buildPath, "--archive", "archive", "1")
+		output, err = cmd.CombinedOutput()
+		if err == nil {
+			t.Errorf("Expected error when using --archive with archive command")
+		}
+
+		if !strings.Contains(string(output), "--archive flag is only supported with 'list' and 'delete' commands") {
+			t.Errorf("Expected validation error message, got: %s", output)
+		}
+
+		// Test that cleanup command is blocked
+		cmd = exec.Command(buildPath, "--archive", "cleanup")
+		output, err = cmd.CombinedOutput()
+		if err == nil {
+			t.Errorf("Expected error when using --archive with cleanup command")
+		}
+
+		if !strings.Contains(string(output), "--archive flag is only supported with 'list' and 'delete' commands") {
+			t.Errorf("Expected validation error message, got: %s", output)
+		}
+	})
+
+	t.Run("archive_flag_help_shows_flag", func(t *testing.T) {
+		cmd := exec.Command(buildPath, "help")
+		output, err := cmd.CombinedOutput()
+		if err != nil {
+			t.Fatalf("Failed to get help: %v\nOutput: %s", err, output)
+		}
+
+		expectedFlags := []string{
+			"--archive, -a",
+			"Work with archive files instead of main todo list",
+		}
+
+		outputStr := string(output)
+		for _, flag := range expectedFlags {
+			if !strings.Contains(outputStr, flag) {
+				t.Errorf("Expected %q in help output, got: %s", flag, outputStr)
+			}
+		}
+	})
+
+	t.Run("archive_flag_with_global_flag", func(t *testing.T) {
+		// Create temp home directory
+		mockHomeDir := filepath.Join(tempDir, "home")
+		if err := os.MkdirAll(filepath.Join(mockHomeDir, ".todo"), 0755); err != nil {
+			t.Fatalf("Failed to create mock home directory: %v", err)
+		}
+
+		// Set HOME environment variable
+		oldHome := os.Getenv("HOME")
+		oldUserProfile := os.Getenv("USERPROFILE")
+		defer func() {
+			os.Setenv("HOME", oldHome)
+			os.Setenv("USERPROFILE", oldUserProfile)
+		}()
+		os.Setenv("HOME", mockHomeDir)
+		os.Setenv("USERPROFILE", mockHomeDir)
+
+		// Create global archive data
+		globalArchiveData := `[
+			{"internal_id":"global1","task":"Global archived task","completed":true,"created_at":"2025-08-08T00:00:00Z","updated_at":"2025-08-08T00:00:00Z","completed_at":"2025-08-08T00:00:00Z"}
+		]`
+		globalArchivePath := filepath.Join(mockHomeDir, ".todo", "todos.archive.json")
+		err := os.WriteFile(globalArchivePath, []byte(globalArchiveData), 0644)
+		if err != nil {
+			t.Fatalf("Failed to create global archive file: %v", err)
+		}
+
+		// Test listing global archive with --global --archive flags
+		cmd := exec.Command(buildPath, "--global", "--archive", "list", "--format", "json")
+		output, err := cmd.CombinedOutput()
+		if err != nil {
+			t.Fatalf("Failed to run --global --archive list: %v\nOutput: %s", err, output)
+		}
+
+		outputStr := string(output)
+		if !strings.Contains(outputStr, "Global archived task") {
+			t.Errorf("Expected global archived task in output, got: %s", outputStr)
+		}
+
+		// Test deleting from global archive
+		cmd = exec.Command(buildPath, "--global", "--archive", "delete", "1")
+		output, err = cmd.CombinedOutput()
+		if err != nil {
+			t.Fatalf("Failed to run --global --archive delete: %v\nOutput: %s", err, output)
+		}
+
+		if !strings.Contains(string(output), "Deleted todo item with ID: 1") {
+			t.Errorf("Expected delete confirmation, got: %s", output)
+		}
+
+		// Verify item was deleted from global archive
+		cmd = exec.Command(buildPath, "--global", "--archive", "list", "--format", "json")
+		output, err = cmd.CombinedOutput()
+		if err != nil {
+			t.Fatalf("Failed to list global archive after delete: %v\nOutput: %s", err, output)
+		}
+
+		outputStr = string(output)
+		if strings.Contains(outputStr, "Global archived task") {
+			t.Errorf("Deleted task should not appear in global archive, got: %s", outputStr)
+		}
+	})
+
+	t.Run("archive_flag_with_empty_archive", func(t *testing.T) {
+		// Remove archive file
+		os.Remove(".todos.archive.json")
+
+		// Test listing empty archive
+		cmd := exec.Command(buildPath, "--archive", "list")
+		output, err := cmd.CombinedOutput()
+		if err != nil {
+			t.Fatalf("Failed to run --archive list with empty archive: %v\nOutput: %s", err, output)
+		}
+
+		outputStr := string(output)
+		if !strings.Contains(outputStr, "No todos found") {
+			t.Errorf("Expected 'No todos found' message for empty archive, got: %s", outputStr)
+		}
+
+		// Test deleting from empty archive
+		cmd = exec.Command(buildPath, "--archive", "delete", "1")
+		output, err = cmd.CombinedOutput()
+		if err == nil {
+			t.Errorf("Expected error when deleting from empty archive")
+		}
+
+		if !strings.Contains(string(output), "failed to delete task: invalid index: 0") {
+			t.Errorf("Expected invalid index error message, got: %s", output)
+		}
+	})
+}

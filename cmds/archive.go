@@ -16,6 +16,11 @@ func NewArchiveCommand() *cli.Command {
 		Aliases:   []string{"ar"},
 		ArgsUsage: "<id>",
 		Action: func(ctx context.Context, c *cli.Command) error {
+			// Validate archive flag usage
+			if err := ValidateArchiveFlagUsage(c, "archive"); err != nil {
+				return cli.Exit(err.Error(), 1)
+			}
+
 			if c.Args().Len() != 1 {
 				return cli.Exit("exactly one ID is required", 1)
 			}

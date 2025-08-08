@@ -355,6 +355,31 @@ func GetStoragePath(isGlobal bool) (string, error) {
 	return filepath.Join(todoDir, "todos.json"), nil
 }
 
+// GetEffectiveStoragePath returns the appropriate storage path based on both global and archive flags
+func GetEffectiveStoragePath(isGlobal, isArchive bool) (string, error) {
+	if isArchive {
+		return GetArchivePath(isGlobal)
+	}
+	return GetStoragePath(isGlobal)
+}
+
+// IsCommandAllowedWithArchive checks if a command is allowed when using the --archive flag
+func IsCommandAllowedWithArchive(commandName string) bool {
+	allowedCommands := map[string]bool{
+		"list":   true,
+		"delete": true,
+	}
+	return allowedCommands[commandName]
+}
+
+// ValidateArchiveFlagUsage validates that --archive flag is only used with supported commands
+func ValidateArchiveFlagUsage(c *cli.Command, commandName string) error {
+	if c.Bool("archive") && !IsCommandAllowedWithArchive(commandName) {
+		return fmt.Errorf("--archive flag is only supported with 'list' and 'delete' commands, not '%s'", commandName)
+	}
+	return nil
+}
+
 // GetArchivePath returns the appropriate archive storage path based on the global flag
 func GetArchivePath(isGlobal bool) (string, error) {
 	if !isGlobal {
@@ -388,8 +413,8 @@ func ExecuteListCommand(c *cli.Command) error {
 		fmt.Println("DEBUG: Executing list command after main action")
 	}
 
-	// Get the appropriate storage path based on global flag
-	storagePath, err := GetStoragePath(c.Bool("global"))
+	// Get the appropriate storage path based on global and archive flags
+	storagePath, err := GetEffectiveStoragePath(c.Bool("global"), c.Bool("archive"))
 	if err != nil {
 		return fmt.Errorf("error getting storage path: %w", err)
 	}

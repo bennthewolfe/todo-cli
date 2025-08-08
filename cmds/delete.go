@@ -16,6 +16,11 @@ func NewDeleteCommand() *cli.Command {
 		Aliases:   []string{"del", "rm"},
 		ArgsUsage: "<id>",
 		Action: func(ctx context.Context, c *cli.Command) error {
+			// Validate archive flag usage
+			if err := ValidateArchiveFlagUsage(c, "delete"); err != nil {
+				return cli.Exit(err.Error(), 1)
+			}
+
 			if c.Args().Len() != 1 {
 				return cli.Exit("exactly one ID is required", 1)
 			}
@@ -29,8 +34,8 @@ func NewDeleteCommand() *cli.Command {
 				return cli.Exit("ID must be greater than 0", 1)
 			}
 
-			// Get the appropriate storage path based on global flag
-			storagePath, err := GetStoragePath(c.Bool("global"))
+			// Get the appropriate storage path based on global and archive flags
+			storagePath, err := GetEffectiveStoragePath(c.Bool("global"), c.Bool("archive"))
 			if err != nil {
 				return cli.Exit(fmt.Sprintf("error getting storage path: %v", err), 2)
 			}
