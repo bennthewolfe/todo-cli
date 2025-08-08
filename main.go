@@ -63,6 +63,7 @@ func main() {
 
 		Commands: []*cli.Command{
 			commands.NewAddCommand(),
+			commands.NewArchiveCommand(),
 			commands.NewDeleteCommand(),
 			commands.NewEditCommand(),
 			commands.NewListCommand(),

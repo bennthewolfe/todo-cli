@@ -4,6 +4,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -486,6 +487,197 @@ func TestCLIGlobalStorage(t *testing.T) {
 			if !strings.Contains(outputStr, expected) {
 				t.Errorf("Expected help to contain %q, got: %s", expected, outputStr)
 			}
+		}
+	})
+}
+
+// TestCLIArchive tests the archive command functionality
+func TestCLIArchive(t *testing.T) {
+	// Build the CLI for testing
+	buildPath := filepath.Join(t.TempDir(), "todo.exe")
+	if runtime.GOOS != "windows" {
+		buildPath = filepath.Join(t.TempDir(), "todo")
+	}
+
+	cmd := exec.Command("go", "build", "-o", buildPath, ".")
+	if err := cmd.Run(); err != nil {
+		t.Fatalf("Failed to build CLI: %v", err)
+	}
+
+	// Create temporary directory for testing
+	tempDir, err := os.MkdirTemp("", "todo_archive_test")
+	if err != nil {
+		t.Fatalf("Failed to create temp directory: %v", err)
+	}
+	defer os.RemoveAll(tempDir)
+
+	// Change to temp directory
+	oldWd, _ := os.Getwd()
+	defer os.Chdir(oldWd)
+	os.Chdir(tempDir)
+
+	// Test archive without items
+	t.Run("archive_invalid_id", func(t *testing.T) {
+		cmd := exec.Command(buildPath, "archive", "1")
+		output, err := cmd.CombinedOutput()
+		if err == nil {
+			t.Errorf("Expected archive to fail with no items, but it succeeded")
+		}
+
+		expectedMsg := "invalid ID"
+		if !strings.Contains(string(output), expectedMsg) {
+			t.Errorf("Expected %q in error output, got: %s", expectedMsg, output)
+		}
+	})
+
+	// Add some test items
+	t.Run("setup_for_archive", func(t *testing.T) {
+		// Add test items
+		testItems := []string{"Item to archive", "Another item", "Third item"}
+		for _, item := range testItems {
+			cmd := exec.Command(buildPath, "add", item)
+			output, err := cmd.CombinedOutput()
+			if err != nil {
+				t.Fatalf("Failed to add test item: %v\nOutput: %s", err, output)
+			}
+		}
+	})
+
+	// Test successful archive
+	t.Run("archive_item", func(t *testing.T) {
+		cmd := exec.Command(buildPath, "archive", "2")
+		output, err := cmd.CombinedOutput()
+		if err != nil {
+			t.Fatalf("Failed to archive item: %v\nOutput: %s", err, output)
+		}
+
+		expectedMsg := "Archived todo item: Another item"
+		if !strings.Contains(string(output), expectedMsg) {
+			t.Errorf("Expected %q in output, got: %s", expectedMsg, output)
+		}
+
+		// Verify archive file was created
+		if _, err := os.Stat(".todos.archive.json"); os.IsNotExist(err) {
+			t.Errorf("Archive file was not created")
+		}
+
+		// Verify item was removed from main list
+		cmd = exec.Command(buildPath, "list", "--format", "json")
+		output, err = cmd.CombinedOutput()
+		if err != nil {
+			t.Fatalf("Failed to list todos after archive: %v\nOutput: %s", err, output)
+		}
+
+		if strings.Contains(string(output), "Another item") {
+			t.Errorf("Item still appears in main list after archiving")
+		}
+
+		// Verify only 2 items remain
+		outputStr := string(output)
+		if strings.Count(outputStr, `"task":`) != 2 {
+			t.Errorf("Expected 2 items in main list after archive, got output: %s", outputStr)
+		}
+	})
+
+	// Test archive without arguments
+	t.Run("archive_without_args", func(t *testing.T) {
+		cmd := exec.Command(buildPath, "archive")
+		output, err := cmd.CombinedOutput()
+		if err == nil {
+			t.Errorf("Expected archive to fail without arguments, but it succeeded")
+		}
+
+		expectedMsg := "exactly one ID is required"
+		if !strings.Contains(string(output), expectedMsg) {
+			t.Errorf("Expected %q in error output, got: %s", expectedMsg, output)
+		}
+	})
+
+	// Test archive with invalid ID format
+	t.Run("archive_invalid_format", func(t *testing.T) {
+		cmd := exec.Command(buildPath, "archive", "abc")
+		output, err := cmd.CombinedOutput()
+		if err == nil {
+			t.Errorf("Expected archive to fail with invalid ID format, but it succeeded")
+		}
+
+		expectedMsg := "invalid ID: abc must be a number"
+		if !strings.Contains(string(output), expectedMsg) {
+			t.Errorf("Expected %q in error output, got: %s", expectedMsg, output)
+		}
+	})
+}
+
+// TestCLIGlobalArchive tests archive command with global flag
+func TestCLIGlobalArchive(t *testing.T) {
+	// Build the CLI for testing
+	buildPath := filepath.Join(t.TempDir(), "todo.exe")
+	if runtime.GOOS != "windows" {
+		buildPath = filepath.Join(t.TempDir(), "todo")
+	}
+
+	cmd := exec.Command("go", "build", "-o", buildPath, ".")
+	if err := cmd.Run(); err != nil {
+		t.Fatalf("Failed to build CLI: %v", err)
+	}
+
+	// Create temporary directory to use as mock home
+	mockHomeDir, err := os.MkdirTemp("", "mock_home")
+	if err != nil {
+		t.Fatalf("Failed to create temp directory: %v", err)
+	}
+	defer os.RemoveAll(mockHomeDir)
+
+	// Save original environment variables
+	oldHome := os.Getenv("HOME")
+	oldUserProfile := os.Getenv("USERPROFILE")
+	defer func() {
+		os.Setenv("HOME", oldHome)
+		os.Setenv("USERPROFILE", oldUserProfile)
+	}()
+
+	// Set mock home directory
+	os.Setenv("HOME", mockHomeDir)
+	os.Setenv("USERPROFILE", mockHomeDir)
+
+	// Add a global todo for testing
+	t.Run("setup_global_item", func(t *testing.T) {
+		cmd := exec.Command(buildPath, "--global", "add", "Global item to archive")
+		output, err := cmd.CombinedOutput()
+		if err != nil {
+			t.Fatalf("Failed to add global todo: %v\nOutput: %s", err, output)
+		}
+	})
+
+	// Test global archive
+	t.Run("archive_global_item", func(t *testing.T) {
+		cmd := exec.Command(buildPath, "--global", "archive", "1")
+		output, err := cmd.CombinedOutput()
+		if err != nil {
+			t.Fatalf("Failed to archive global item: %v\nOutput: %s", err, output)
+		}
+
+		expectedMsg := "Archived todo item: Global item to archive"
+		if !strings.Contains(string(output), expectedMsg) {
+			t.Errorf("Expected %q in output, got: %s", expectedMsg, output)
+		}
+
+		// Verify global archive file was created
+		globalArchivePath := filepath.Join(mockHomeDir, ".todo", "todos.archive.json")
+		if _, err := os.Stat(globalArchivePath); os.IsNotExist(err) {
+			t.Errorf("Global archive file was not created at %s", globalArchivePath)
+		}
+
+		// Verify item was removed from global list
+		cmd = exec.Command(buildPath, "--global", "list")
+		output, err = cmd.CombinedOutput()
+		if err != nil {
+			t.Fatalf("Failed to list global todos after archive: %v\nOutput: %s", err, output)
+		}
+
+		outputStr := string(output)
+		if strings.Contains(outputStr, "Global item to archive") {
+			t.Errorf("Item still appears in global list after archiving")
 		}
 	})
 }

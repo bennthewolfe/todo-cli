@@ -130,6 +130,22 @@ func TestVersionCommand_Creation(t *testing.T) {
 	}
 }
 
+func TestArchiveCommand_Creation(t *testing.T) {
+	cmd := NewArchiveCommand()
+
+	if cmd.Name != "archive" {
+		t.Errorf("NewArchiveCommand() Name = %s, want 'archive'", cmd.Name)
+	}
+
+	if cmd.Usage != "Archive a todo item by ID (moves to archive file)" {
+		t.Errorf("NewArchiveCommand() Usage incorrect")
+	}
+
+	if len(cmd.Aliases) == 0 || cmd.Aliases[0] != "ar" {
+		t.Errorf("NewArchiveCommand() should have alias 'ar'")
+	}
+}
+
 // Test the commands with actual functionality (requires proper CLI setup)
 func TestCommandsWithTodoList(t *testing.T) {
 	_, cleanup := setupTestEnvironment(t)
@@ -242,6 +258,78 @@ func TestGetStoragePath(t *testing.T) {
 		}
 		if !strings.Contains(path, "todos.json") {
 			t.Errorf("GetStoragePath() = %s, should contain 'todos.json'", path)
+		}
+
+		// Verify .todo directory was created
+		todoDirPath := filepath.Join(tempDir, ".todo")
+		if _, err := os.Stat(todoDirPath); os.IsNotExist(err) {
+			t.Errorf(".todo directory was not created at %s", todoDirPath)
+		}
+	})
+}
+
+// TestGetArchivePath tests the GetArchivePath function
+func TestGetArchivePath(t *testing.T) {
+	tests := []struct {
+		name     string
+		global   bool
+		expected string
+	}{
+		{
+			name:     "local archive",
+			global:   false,
+			expected: ".todos.archive.json",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if !tt.global {
+				// Test local archive path
+				path, err := GetArchivePath(tt.global)
+				if err != nil {
+					t.Errorf("GetArchivePath() error = %v", err)
+				}
+				if path != tt.expected {
+					t.Errorf("GetArchivePath() = %s, want %s", path, tt.expected)
+				}
+			}
+		})
+	}
+
+	// Test global archive path with mock home directory
+	t.Run("global archive", func(t *testing.T) {
+		// Create a temporary directory to use as mock home
+		tempDir, err := os.MkdirTemp("", "mock_home")
+		if err != nil {
+			t.Fatalf("Failed to create temp directory: %v", err)
+		}
+		defer os.RemoveAll(tempDir)
+
+		// Save original environment variables
+		oldHome := os.Getenv("HOME")
+		oldUserProfile := os.Getenv("USERPROFILE")
+		defer func() {
+			os.Setenv("HOME", oldHome)
+			os.Setenv("USERPROFILE", oldUserProfile)
+		}()
+
+		// Set mock home directory
+		os.Setenv("HOME", tempDir)
+		os.Setenv("USERPROFILE", tempDir)
+
+		// Test global archive path
+		path, err := GetArchivePath(true)
+		if err != nil {
+			t.Errorf("GetArchivePath() error = %v", err)
+		}
+
+		// Verify path contains expected components
+		if !strings.Contains(path, ".todo") {
+			t.Errorf("GetArchivePath() = %s, should contain '.todo'", path)
+		}
+		if !strings.Contains(path, "todos.archive.json") {
+			t.Errorf("GetArchivePath() = %s, should contain 'todos.archive.json'", path)
 		}
 
 		// Verify .todo directory was created

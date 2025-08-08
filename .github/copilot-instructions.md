@@ -1,7 +1,7 @@
 # Todo CLI - Copilot Repository Instructions
 
 ## Project Overview
-This is a **Todo CLI application** written in **Go 1.24.5** using the `urfave/cli/v3` framework. It manages todo items with support for adding, editing, deleting, toggling completion, and listing tasks. Data is stored as JSON either locally (`.todos.json`) or globally (`~/.todo/todos.json`). The project emphasizes high-quality code with comprehensive testing and dual build system support.
+This is a **Todo CLI application** written in **Go 1.24.5** using the `urfave/cli/v3` framework. It manages todo items with support for adding, editing, deleting, toggling completion, archiving, and listing tasks. Data is stored as JSON either locally (`.todos.json`) or globally (`~/.todo/todos.json`). The project emphasizes high-quality code with comprehensive testing and dual build system support.
 
 **Repository Size**: ~50 files, 6.5MB binary output  
 **Languages**: Go (primary), PowerShell, Makefile  
@@ -139,13 +139,14 @@ todo-cli/
 ├── config/config.go        # Version="2.0.0", ReleaseDate="2025-08-06"
 ├── cmds/                   # Each command in separate file
 │   ├── add.go                # NewAddCommand() - adds todos
+│   ├── archive.go            # NewArchiveCommand() - moves todos to archive file
 │   ├── delete.go             # NewDeleteCommand() - removes by index  
 │   ├── edit.go               # NewEditCommand() - updates task text
 │   ├── list.go               # NewListCommand() - shows todos (table/json/pretty)
 │   ├── toggle.go             # NewToggleCommand() - completion status
 │   ├── version.go            # NewVersionCommand() - version info
 │   ├── commands.go           # Command interfaces and registry
-│   ├── utils.go              # GetStoragePath(), TodoList type
+│   ├── utils.go              # GetStoragePath(), GetArchivePath(), TodoList type
 │   └── commands_test.go      # Command unit tests
 ├── storage.go              # Generic storage layer with Save/Load
 ├── todo.go                 # Core TodoList logic and data structures
@@ -160,6 +161,7 @@ All commands are registered in `main.go`:
 ```go
 Commands: []*cli.Command{
     commands.NewAddCommand(),
+    commands.NewArchiveCommand(),
     commands.NewDeleteCommand(), 
     commands.NewEditCommand(),
     commands.NewListCommand(),
@@ -171,6 +173,8 @@ Commands: []*cli.Command{
 ### Storage Architecture
 - **Local**: `.todos.json` in current directory
 - **Global**: `~/.todo/todos.json` in user home (use `--global` or `-g`)
+- **Archive Local**: `.todos.archive.json` in current directory  
+- **Archive Global**: `~/.todo/todos.archive.json` in user home
 - **Format**: JSON with GUID-based IDs, timestamps, completion status
 - **Load/Save**: Generic storage layer in `storage.go`
 

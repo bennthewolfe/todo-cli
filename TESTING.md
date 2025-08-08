@@ -156,6 +156,7 @@ Current test coverage:
 ✅ **TodoList Operations**
 - Adding tasks
 - Deleting tasks by index
+- Archiving tasks (moves to archive file)
 - Updating task content
 - Toggling completion status
 - Index validation
@@ -171,10 +172,12 @@ Current test coverage:
 - Command-line argument parsing
 - End-to-end workflows
 - Help system functionality
+- Archive functionality (local and global)
 
 ✅ **Performance Benchmarks**
 - Add operation performance
 - Delete operation performance
+- Archive operation performance
 - Storage save/load performance
 
 ### Test Examples

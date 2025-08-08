@@ -354,6 +354,27 @@ func GetStoragePath(isGlobal bool) (string, error) {
 	return filepath.Join(todoDir, "todos.json"), nil
 }
 
+// GetArchivePath returns the appropriate archive storage path based on the global flag
+func GetArchivePath(isGlobal bool) (string, error) {
+	if !isGlobal {
+		return ".todos.archive.json", nil
+	}
+
+	// Get user's home directory
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		return "", fmt.Errorf("unable to get user home directory: %w", err)
+	}
+
+	// Create ~/.todo directory if it doesn't exist
+	todoDir := filepath.Join(homeDir, ".todo")
+	if err := os.MkdirAll(todoDir, 0755); err != nil {
+		return "", fmt.Errorf("unable to create todo directory: %w", err)
+	}
+
+	return filepath.Join(todoDir, "todos.archive.json"), nil
+}
+
 // initializeTodoList initializes the todo list and storage with custom path
 func initializeTodoListWithPath(storagePath string) (*TodoList, *Storage[TodoList], error) {
 	todoList := &TodoList{}

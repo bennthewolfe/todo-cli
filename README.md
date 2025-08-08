@@ -11,6 +11,7 @@ This based on the tutorial https://codingwithpatrik.dev/posts/how-to-build-a-cli
 - Mark tasks as completed
 - Delete tasks
 - Edit existing tasks
+- Archive tasks (moves to archive file)
 - Local and global storage options
 - Multiple output formats (table, JSON, pretty JSON)
 
@@ -73,6 +74,9 @@ Run the application using the following commands:
 # Delete a todo
 .\todo.exe delete 1
 
+# Archive a todo (moves to archive file)
+.\todo.exe archive 1
+
 # Show version
 .\todo.exe version
 
@@ -128,6 +132,9 @@ New-Item -ItemType SymbolicLink -Path <LINK> -Target <ACTUAL SOURCE>
 .\todo.exe --global add "Update documentation"
 .\todo.exe --global list
 
+# Archive a global todo
+.\todo.exe --global archive 1
+
 # Toggle completion
 .\todo.exe --global toggle 1
 .\todo.exe --global list
@@ -166,5 +173,11 @@ make coverage
 
 - **Local**: `.todos.json` in the current working directory
 - **Global**: `~/.todo/todos.json` in the user's home directory
+
+### Archive Files
+
+When you archive todos, they are moved to archive files:
+- **Local Archive**: `.todos.archive.json` in the current working directory  
+- **Global Archive**: `~/.todo/todos.archive.json` in the user's home directory
 
 The global storage directory (`~/.todo/`) is automatically created when first used and can be used for future configuration files and extensions.
