@@ -111,8 +111,20 @@ func TestListCommand_Creation(t *testing.T) {
 	}
 
 	// Check if format flag is present
-	if len(cmd.Flags) == 0 {
+	if len(cmd.Flags) < 1 {
 		t.Errorf("NewListCommand() should have format flag")
+	}
+
+	// Check if filter flag is present
+	hasFilterFlag := false
+	for _, flag := range cmd.Flags {
+		if boolFlag, ok := flag.(*cli.BoolFlag); ok && boolFlag.Name == "filter" {
+			hasFilterFlag = true
+			break
+		}
+	}
+	if !hasFilterFlag {
+		t.Errorf("NewListCommand() should have filter flag")
 	}
 }
 

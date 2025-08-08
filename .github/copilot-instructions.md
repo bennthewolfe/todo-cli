@@ -247,6 +247,12 @@ func NewXCommand() *cli.Command {
 - `--debug`: Enable verbose debug output
 - `--global`, `-g`: Use global storage in `~/.todo/todos.json`
 - `--list`, `-l`: Show todo list after command execution (works with all commands)
+- `--archive`, `-a`: Work with archive files instead of main todo list (list and delete only)
+
+### Command-Specific Flags
+#### List Command
+- `--format`, `-f`: Output format (table, json, pretty, none) - default: table
+- `--filter`: Filter out completed tasks, showing only incomplete items
 
 **Global Flag Positioning**: Global flags in urfave/cli/v3 can appear in multiple positions:
 - Before command: `todo --global --list add "task"`
@@ -354,6 +360,60 @@ func TestCLIAdd(t *testing.T)           // Integration test
 func BenchmarkAdd(b *testing.B)         // Benchmark test
 ```
 
+### Integration Testing Best Practices (Critical for reliable tests)
+
+**ALWAYS use fresh binary builds in temp directories** - Integration tests must build a fresh binary to avoid dependency on pre-existing binaries and ensure clean test environments.
+
+**Required Integration Test Pattern:**
+```go
+func TestCLIYourFeature(t *testing.T) {
+    // 1. Build fresh binary in temp directory (MANDATORY)
+    buildPath := filepath.Join(t.TempDir(), "todo.exe")
+    cmd := exec.Command("go", "build", "-o", buildPath, ".")
+    if err := cmd.Run(); err != nil {
+        t.Fatalf("Failed to build CLI: %v", err)
+    }
+
+    // 2. Create isolated temp directory for test data
+    tempDir, err := os.MkdirTemp("", "todo_feature_test")
+    if err != nil {
+        t.Fatalf("Failed to create temp directory: %v", err)
+    }
+    defer os.RemoveAll(tempDir)
+
+    // 3. Change to temp directory for clean test environment
+    oldWd, _ := os.Getwd()
+    defer os.Chdir(oldWd)
+    os.Chdir(tempDir)
+
+    // 4. Run your tests using buildPath...
+    t.Run("your_test_case", func(t *testing.T) {
+        cmd := exec.Command(buildPath, "your", "command", "args")
+        output, err := cmd.CombinedOutput()
+        // Test assertions...
+    })
+}
+```
+
+**Why This Pattern is Essential:**
+- **Binary Independence**: Tests don't rely on external build artifacts like `./todo.exe` or `./build/todo.exe`
+- **Clean Environment**: Each test gets a fresh binary and isolated file system
+- **Reproducible**: Tests work regardless of previous build state or working directory
+- **Parallel Safe**: Multiple tests can run without interfering with each other
+- **CI/CD Ready**: Works in any build environment without pre-setup
+
+**Anti-Patterns to Avoid:**
+```go
+// WRONG: Relies on pre-built binary that may not exist
+buildPath := "./todo.exe"
+buildPath := "./build/todo.exe"
+
+// WRONG: Fallback logic that can mask real issues  
+if _, err := os.Stat(buildPath); os.IsNotExist(err) {
+    t.Skip("No built binary found")
+}
+```
+
 ### Global Flag Testing Patterns
 When testing commands with global flags, use these patterns:
 
@@ -387,6 +447,175 @@ if !strings.Contains(outputStr, "ID") || !strings.Contains(outputStr, "Task") {
 4. Global flag positioning tests (before/after/mixed)
 5. Benchmark if performance-critical
 
+### Testing Command Flags and Features
+When adding new flags or features to existing commands:
+
+**Unit Test Pattern:**
+```go
+func TestCommandName_Creation(t *testing.T) {
+    cmd := NewCommandNameCommand()
+    
+    // Verify flag exists
+    hasNewFlag := false
+    for _, flag := range cmd.Flags {
+        if boolFlag, ok := flag.(*cli.BoolFlag); ok && boolFlag.Name == "newflag" {
+            hasNewFlag = true
+            break
+        }
+    }
+    if !hasNewFlag {
+        t.Errorf("NewCommandNameCommand() should have newflag flag")
+    }
+}
+```
+
+**Feature Integration Test Pattern:**
+```go
+func TestCLINewFeature(t *testing.T) {
+    // Build fresh binary
+    buildPath := filepath.Join(t.TempDir(), "todo.exe")
+    cmd := exec.Command("go", "build", "-o", buildPath, ".")
+    if err := cmd.Run(); err != nil {
+        t.Fatalf("Failed to build CLI: %v", err)
+    }
+    
+    // Set up test data
+    tempDir, err := os.MkdirTemp("", "todo_newfeature_test")
+    if err != nil {
+        t.Fatalf("Failed to create temp directory: %v", err)
+    }
+    defer os.RemoveAll(tempDir)
+    
+    oldWd, _ := os.Getwd()
+    defer os.Chdir(oldWd)
+    os.Chdir(tempDir)
+
+    // Test different scenarios
+    t.Run("feature_scenario_1", func(t *testing.T) {
+        // Set up specific test case data
+        cmd := exec.Command(buildPath, "add", "Test task")
+        output, err := cmd.CombinedOutput()
+        if err != nil {
+            t.Fatalf("Failed to add task: %v\nOutput: %s", err, output)
+        }
+        
+        // Test the new feature
+        cmd = exec.Command(buildPath, "command", "--newflag")
+        output, err = cmd.CombinedOutput()
+        if err != nil {
+            t.Fatalf("Failed to run command with new flag: %v\nOutput: %s", err, output)
+        }
+        
+        // Verify expected behavior
+        outputStr := string(output)
+        if !strings.Contains(outputStr, "expected result") {
+            t.Errorf("Expected specific output, got: %s", outputStr)
+        }
+    })
+}
+```
+
+**Testing with Multiple Output Formats:**
+```go
+// Test new feature works with all output formats
+formats := []string{"table", "json", "pretty"}
+for _, format := range formats {
+    t.Run(fmt.Sprintf("feature_with_%s_format", format), func(t *testing.T) {
+        cmd := exec.Command(buildPath, "command", "--newflag", "--format", format)
+        output, err := cmd.CombinedOutput()
+        if err != nil {
+            t.Fatalf("Failed with %s format: %v\nOutput: %s", format, err, output)
+        }
+        
+        // Format-specific validations
+        outputStr := string(output)
+        switch format {
+        case "json":
+            // Validate JSON structure
+            if !strings.Contains(outputStr, `"task":`) {
+                t.Errorf("JSON output should contain task field: %s", outputStr)
+            }
+        case "table":
+            // Validate table headers
+            if !strings.Contains(outputStr, "ID") || !strings.Contains(outputStr, "Task") {
+                t.Errorf("Table output should contain headers: %s", outputStr)
+            }
+        }
+    })
+}
+```
+
+### Adding New Methods to TodoList Interface
+When adding new functionality that requires extending the TodoList interface:
+
+**CRITICAL**: There are TWO TodoList interfaces that must be kept in sync:
+1. `TodoListInterface` in `todo.go` (main package)
+2. `TodoListInterface` in `cmds/commands.go` (commands package)
+
+**Required Steps:**
+```go
+// 1. Add method to main package interface (todo.go)
+type TodoListInterface interface {
+    Add(task string) error
+    Delete(index int) error
+    Update(index int, task string) error
+    Toggle(index int) error
+    View(format string)
+    NewMethod()  // Add new method here
+}
+
+// 2. Add public wrapper method to main package (todo.go)
+func (todoList *TodoList) NewMethod() {
+    todoList.newMethod()
+}
+
+// 3. Add private implementation method to main package (todo.go)
+func (todoList *TodoList) newMethod() {
+    // Implementation here
+}
+
+// 4. Add method to commands package interface (cmds/commands.go)
+type TodoListInterface interface {
+    Add(task string) error
+    Delete(index int) error
+    Update(index int, task string) error
+    Toggle(index int) error
+    View(format string)
+    NewMethod()  // Add new method here
+}
+
+// 5. Add public wrapper method to commands package (cmds/utils.go)
+func (todoList *TodoList) NewMethod() {
+    todoList.newMethod()
+}
+
+// 6. Add private implementation method to commands package (cmds/utils.go)
+func (todoList *TodoList) newMethod() {
+    // Implementation here (should match main package)
+}
+```
+
+**Testing Pattern for New Interface Methods:**
+```go
+// Add to todo_test.go for main package implementation
+func TestTodoList_NewMethod(t *testing.T) {
+    todoList := &TodoList{
+        // Test data setup
+    }
+    
+    todoList.NewMethod()
+    
+    // Verify behavior
+}
+
+// Add to commands_test.go for commands package validation
+func TestNewMethodInterface(t *testing.T) {
+    // Test that interface method is available
+    var todoList TodoListInterface = &TodoList{}
+    todoList.NewMethod() // Should compile without errors
+}
+```
+
 ## Development Workflow (validated)
 
 ### Adding New Commands
@@ -416,6 +645,80 @@ if !strings.Contains(outputStr, "ID") || !strings.Contains(outputStr, "Task") {
 - **Position Independence**: Flags must work before, after, or mixed with commands
 - **Inheritance**: Never redeclare global flags in individual commands
 - **Order of Operations**: Global flags that affect behavior should be checked early, display flags (like `--list`) should be checked at the end
+
+### Example: Adding the Filter Flag (Reference Implementation)
+This shows the complete process used to add the `--filter` flag to the list command:
+
+**1. Add flag to command definition:**
+```go
+// In cmds/list.go
+&cli.BoolFlag{
+    Name:    "filter",
+    Usage:   "Filter out completed tasks",
+},
+```
+
+**2. Add interface methods to both packages:**
+```go
+// In todo.go and cmds/commands.go
+type TodoListInterface interface {
+    // ... existing methods
+    FilterIncomplete()
+}
+
+// In todo.go and cmds/utils.go
+func (todoList *TodoList) FilterIncomplete() {
+    todoList.filterIncomplete()
+}
+
+func (todoList *TodoList) filterIncomplete() {
+    t := *todoList
+    filtered := make(TodoList, 0)
+    for _, todo := range t {
+        if !todo.Completed {
+            filtered = append(filtered, todo)
+        }
+    }
+    *todoList = filtered
+}
+```
+
+**3. Use in command logic:**
+```go
+// Apply filter if requested
+if c.Bool("filter") {
+    todoList.FilterIncomplete()
+}
+```
+
+**4. Add comprehensive tests:**
+```go
+// Unit tests in todo_test.go
+func TestTodoList_FilterIncomplete(t *testing.T) { /* ... */ }
+
+// Command structure test in commands_test.go  
+func TestListCommand_Creation(t *testing.T) {
+    // Verify filter flag exists
+    hasFilterFlag := false
+    for _, flag := range cmd.Flags {
+        if boolFlag, ok := flag.(*cli.BoolFlag); ok && boolFlag.Name == "filter" {
+            hasFilterFlag = true
+        }
+    }
+    if !hasFilterFlag {
+        t.Errorf("Should have filter flag")
+    }
+}
+
+// Integration tests in integration_test.go
+func TestCLIFilterFlag(t *testing.T) {
+    buildPath := filepath.Join(t.TempDir(), "todo.exe")
+    cmd := exec.Command("go", "build", "-o", buildPath, ".")
+    // ... complete integration test
+}
+```
+
+**5. Update documentation in README.md and copilot-instructions.md**
 
 ### Adding Build Targets (CRITICAL synchronization)
 **ALWAYS update both build systems identically:**

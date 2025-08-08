@@ -15,6 +15,7 @@ This based on the tutorial https://codingwithpatrik.dev/posts/how-to-build-a-cli
 - Cleanup command to archive all completed tasks at once
 - Local and global storage options
 - Multiple output formats (table, JSON, pretty JSON)
+- Filter incomplete tasks with `--filter` flag
 - `--list` flag to show todos after any command execution
 
 ## Storage Options
@@ -88,6 +89,10 @@ Run the application using the following commands:
 .\todo.exe list                    # Table format (default)
 .\todo.exe list --format json      # JSON format
 .\todo.exe list --format pretty    # Pretty JSON format
+
+# Filter out completed tasks
+.\todo.exe list --filter           # Show only incomplete tasks
+.\todo.exe list --filter --format json  # Show incomplete tasks in JSON format
 
 # Edit a todo
 .\todo.exe edit 1 "Updated task"

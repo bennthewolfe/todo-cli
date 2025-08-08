@@ -21,6 +21,10 @@ func NewListCommand() *cli.Command {
 				Usage:   "Output format (table, json, pretty, none)",
 				Value:   "table",
 			},
+			&cli.BoolFlag{
+				Name:    "filter",
+				Usage:   "Filter out completed tasks",
+			},
 		},
 		Action: func(ctx context.Context, c *cli.Command) error {
 			// Validate archive flag usage
@@ -62,6 +66,11 @@ func NewListCommand() *cli.Command {
 				return cli.Exit(fmt.Sprintf("failed to initialize todo list: %v", err), 2)
 			}
 
+			// Apply filter if requested
+			if c.Bool("filter") {
+				todoList.FilterIncomplete()
+			}
+
 			todoList.View(format)
 			return nil
 		},
@@ -84,11 +93,12 @@ func (c *ListCommand) Description() string {
 }
 
 func (c *ListCommand) Usage() string {
-	return "todo-cli list [--format <format>]\n  Formats: table, json, pretty"
+	return "todo-cli list [--format <format>] [--filter]\n  Formats: table, json, pretty\n  --filter: Show only incomplete tasks"
 }
 
 func (c *ListCommand) Execute(args []string, todoList TodoListInterface) error {
 	format := "table" // default format
+	filter := false   // default filter
 
 	// Parse format flag if provided
 	for i, arg := range args {
@@ -98,7 +108,9 @@ func (c *ListCommand) Execute(args []string, todoList TodoListInterface) error {
 			} else {
 				return fmt.Errorf("format value is required after --format flag")
 			}
-			break
+		}
+		if arg == "--filter" {
+			filter = true
 		}
 	}
 
@@ -114,6 +126,11 @@ func (c *ListCommand) Execute(args []string, todoList TodoListInterface) error {
 
 	if !valid {
 		return fmt.Errorf("invalid format: %s. Allowed formats: %s", format, strings.Join(allowedFormats, ", "))
+	}
+
+	// Apply filter if requested
+	if filter {
+		todoList.FilterIncomplete()
 	}
 
 	todoList.View(format)

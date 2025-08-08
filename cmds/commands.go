@@ -13,6 +13,7 @@ type TodoListInterface interface {
 	Update(index int, task string) error
 	Toggle(index int) error
 	View(format string)
+	FilterIncomplete()
 }
 
 // Command interface that all commands must implement

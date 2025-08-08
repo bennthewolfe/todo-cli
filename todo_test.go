@@ -244,3 +244,81 @@ func TestTodo_Timestamps(t *testing.T) {
 		t.Errorf("CompletedAt is not valid RFC3339 format: %v", err)
 	}
 }
+
+func TestTodoList_FilterIncomplete(t *testing.T) {
+	todoList := &TodoList{
+		{ID: 1, Task: "Task 1", Completed: false},
+		{ID: 2, Task: "Task 2", Completed: true},
+		{ID: 3, Task: "Task 3", Completed: false},
+		{ID: 4, Task: "Task 4", Completed: true},
+	}
+
+	originalLength := len(*todoList)
+	if originalLength != 4 {
+		t.Errorf("Setup: todoList length = %d, want 4", originalLength)
+	}
+
+	// Apply filter
+	todoList.FilterIncomplete()
+
+	// Should only have incomplete tasks (tasks 1 and 3)
+	if len(*todoList) != 2 {
+		t.Errorf("FilterIncomplete() length = %d, want 2", len(*todoList))
+	}
+
+	// Verify only incomplete tasks remain
+	for _, todo := range *todoList {
+		if todo.Completed {
+			t.Errorf("FilterIncomplete() should not include completed task: %s", todo.Task)
+		}
+	}
+
+	// Verify specific tasks remain
+	if (*todoList)[0].Task != "Task 1" {
+		t.Errorf("FilterIncomplete() first task = %s, want 'Task 1'", (*todoList)[0].Task)
+	}
+
+	if (*todoList)[1].Task != "Task 3" {
+		t.Errorf("FilterIncomplete() second task = %s, want 'Task 3'", (*todoList)[1].Task)
+	}
+}
+
+func TestTodoList_FilterIncomplete_AllCompleted(t *testing.T) {
+	todoList := &TodoList{
+		{ID: 1, Task: "Task 1", Completed: true},
+		{ID: 2, Task: "Task 2", Completed: true},
+	}
+
+	todoList.FilterIncomplete()
+
+	// Should have no tasks remaining
+	if len(*todoList) != 0 {
+		t.Errorf("FilterIncomplete() with all completed length = %d, want 0", len(*todoList))
+	}
+}
+
+func TestTodoList_FilterIncomplete_NoneCompleted(t *testing.T) {
+	todoList := &TodoList{
+		{ID: 1, Task: "Task 1", Completed: false},
+		{ID: 2, Task: "Task 2", Completed: false},
+	}
+
+	originalLength := len(*todoList)
+	todoList.FilterIncomplete()
+
+	// Should have all tasks remaining
+	if len(*todoList) != originalLength {
+		t.Errorf("FilterIncomplete() with none completed length = %d, want %d", len(*todoList), originalLength)
+	}
+}
+
+func TestTodoList_FilterIncomplete_Empty(t *testing.T) {
+	todoList := &TodoList{}
+
+	todoList.FilterIncomplete()
+
+	// Should remain empty
+	if len(*todoList) != 0 {
+		t.Errorf("FilterIncomplete() with empty list length = %d, want 0", len(*todoList))
+	}
+}

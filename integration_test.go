@@ -1401,3 +1401,274 @@ func TestCLIArchiveFlag(t *testing.T) {
 		}
 	})
 }
+
+// TestCLIFilterFlag tests the --filter flag functionality for list command
+func TestCLIFilterFlag(t *testing.T) {
+	// Build the CLI for testing
+	buildPath := filepath.Join(t.TempDir(), "todo.exe")
+
+	cmd := exec.Command("go", "build", "-o", buildPath, ".")
+	if err := cmd.Run(); err != nil {
+		t.Fatalf("Failed to build CLI: %v", err)
+	}
+
+	tempDir, err := os.MkdirTemp("", "todo_filter_test")
+	if err != nil {
+		t.Fatalf("Failed to create temp directory: %v", err)
+	}
+	defer os.RemoveAll(tempDir)
+
+	oldWd, _ := os.Getwd()
+	defer os.Chdir(oldWd)
+	os.Chdir(tempDir)
+
+	t.Run("filter_mixed_completion_status", func(t *testing.T) {
+		// Clean up any existing todos file
+		os.Remove(".todos.json")
+
+		// Add multiple tasks
+		tasks := []string{"Task 1", "Task 2", "Task 3", "Task 4"}
+		for _, task := range tasks {
+			cmd := exec.Command(buildPath, "add", task)
+			output, err := cmd.CombinedOutput()
+			if err != nil {
+				t.Fatalf("Failed to add task '%s': %v\nOutput: %s", task, err, output)
+			}
+		}
+
+		// Toggle some tasks to completed
+		for _, id := range []string{"1", "3"} {
+			cmd := exec.Command(buildPath, "toggle", id)
+			output, err := cmd.CombinedOutput()
+			if err != nil {
+				t.Fatalf("Failed to toggle task %s: %v\nOutput: %s", id, err, output)
+			}
+		}
+
+		// List all tasks (without filter)
+		cmd := exec.Command(buildPath, "list", "--format", "json")
+		output, err := cmd.CombinedOutput()
+		if err != nil {
+			t.Fatalf("Failed to list all tasks: %v\nOutput: %s", err, output)
+		}
+
+		outputStr := string(output)
+		allTaskCount := strings.Count(outputStr, `"task":`)
+		if allTaskCount != 4 {
+			t.Errorf("Expected 4 tasks in unfiltered list, got %d: %s", allTaskCount, outputStr)
+		}
+
+		// List with filter (should only show incomplete tasks)
+		cmd = exec.Command(buildPath, "list", "--filter", "--format", "json")
+		output, err = cmd.CombinedOutput()
+		if err != nil {
+			t.Fatalf("Failed to list filtered tasks: %v\nOutput: %s", err, output)
+		}
+
+		filteredOutputStr := string(output)
+		filteredTaskCount := strings.Count(filteredOutputStr, `"task":`)
+		if filteredTaskCount != 2 {
+			t.Errorf("Expected 2 tasks in filtered list, got %d: %s", filteredTaskCount, filteredOutputStr)
+		}
+
+		// Verify the correct tasks remain (Task 2 and Task 4 should be incomplete)
+		if !strings.Contains(filteredOutputStr, "Task 2") {
+			t.Errorf("Filtered list should contain 'Task 2': %s", filteredOutputStr)
+		}
+		if !strings.Contains(filteredOutputStr, "Task 4") {
+			t.Errorf("Filtered list should contain 'Task 4': %s", filteredOutputStr)
+		}
+
+		// Verify completed tasks are not shown
+		if strings.Contains(filteredOutputStr, "Task 1") {
+			t.Errorf("Filtered list should not contain completed 'Task 1': %s", filteredOutputStr)
+		}
+		if strings.Contains(filteredOutputStr, "Task 3") {
+			t.Errorf("Filtered list should not contain completed 'Task 3': %s", filteredOutputStr)
+		}
+	})
+
+	t.Run("filter_all_completed", func(t *testing.T) {
+		// Clean up any existing todos file
+		os.Remove(".todos.json")
+
+		// Add tasks and complete all of them
+		tasks := []string{"Completed Task 1", "Completed Task 2"}
+		for _, task := range tasks {
+			cmd := exec.Command(buildPath, "add", task)
+			output, err := cmd.CombinedOutput()
+			if err != nil {
+				t.Fatalf("Failed to add task '%s': %v\nOutput: %s", task, err, output)
+			}
+		}
+
+		// Complete all tasks
+		for _, id := range []string{"1", "2"} {
+			cmd := exec.Command(buildPath, "toggle", id)
+			output, err := cmd.CombinedOutput()
+			if err != nil {
+				t.Fatalf("Failed to toggle task %s: %v\nOutput: %s", id, err, output)
+			}
+		}
+
+		// List with filter (should show no tasks)
+		cmd := exec.Command(buildPath, "list", "--filter", "--format", "table")
+		output, err := cmd.CombinedOutput()
+		if err != nil {
+			t.Fatalf("Failed to list filtered tasks: %v\nOutput: %s", err, output)
+		}
+
+		outputStr := string(output)
+		if !strings.Contains(outputStr, "No todos found") {
+			t.Errorf("Expected 'No todos found' message when all tasks are completed, got: %s", outputStr)
+		}
+	})
+
+	t.Run("filter_none_completed", func(t *testing.T) {
+		// Clean up any existing todos file
+		os.Remove(".todos.json")
+
+		// Add tasks but don't complete any
+		tasks := []string{"Incomplete Task 1", "Incomplete Task 2"}
+		for _, task := range tasks {
+			cmd := exec.Command(buildPath, "add", task)
+			output, err := cmd.CombinedOutput()
+			if err != nil {
+				t.Fatalf("Failed to add task '%s': %v\nOutput: %s", task, err, output)
+			}
+		}
+
+		// List with filter (should show all tasks)
+		cmd := exec.Command(buildPath, "list", "--filter", "--format", "json")
+		output, err := cmd.CombinedOutput()
+		if err != nil {
+			t.Fatalf("Failed to list filtered tasks: %v\nOutput: %s", err, output)
+		}
+
+		outputStr := string(output)
+		taskCount := strings.Count(outputStr, `"task":`)
+		if taskCount != 2 {
+			t.Errorf("Expected 2 tasks in filtered list when none completed, got %d: %s", taskCount, outputStr)
+		}
+
+		// Verify both tasks are shown
+		if !strings.Contains(outputStr, "Incomplete Task 1") {
+			t.Errorf("Filtered list should contain 'Incomplete Task 1': %s", outputStr)
+		}
+		if !strings.Contains(outputStr, "Incomplete Task 2") {
+			t.Errorf("Filtered list should contain 'Incomplete Task 2': %s", outputStr)
+		}
+	})
+
+	t.Run("filter_with_different_formats", func(t *testing.T) {
+		// Clean up any existing todos file
+		os.Remove(".todos.json")
+
+		// Add mixed tasks
+		cmd := exec.Command(buildPath, "add", "Format Test Complete")
+		output, err := cmd.CombinedOutput()
+		if err != nil {
+			t.Fatalf("Failed to add task: %v\nOutput: %s", err, output)
+		}
+
+		cmd = exec.Command(buildPath, "add", "Format Test Incomplete")
+		output, err = cmd.CombinedOutput()
+		if err != nil {
+			t.Fatalf("Failed to add task: %v\nOutput: %s", err, output)
+		}
+
+		// Complete first task
+		cmd = exec.Command(buildPath, "toggle", "1")
+		output, err = cmd.CombinedOutput()
+		if err != nil {
+			t.Fatalf("Failed to toggle task: %v\nOutput: %s", err, output)
+		}
+
+		// Test filter with table format
+		cmd = exec.Command(buildPath, "list", "--filter", "--format", "table")
+		output, err = cmd.CombinedOutput()
+		if err != nil {
+			t.Fatalf("Failed to list filtered tasks (table): %v\nOutput: %s", err, output)
+		}
+
+		tableOutput := string(output)
+		if !strings.Contains(tableOutput, "Format Test Incomplete") {
+			t.Errorf("Table filtered list should contain incomplete task: %s", tableOutput)
+		}
+		if strings.Contains(tableOutput, "Format Test Complete") {
+			t.Errorf("Table filtered list should not contain completed task: %s", tableOutput)
+		}
+
+		// Test filter with pretty format
+		cmd = exec.Command(buildPath, "list", "--filter", "--format", "pretty")
+		output, err = cmd.CombinedOutput()
+		if err != nil {
+			t.Fatalf("Failed to list filtered tasks (pretty): %v\nOutput: %s", err, output)
+		}
+
+		prettyOutput := string(output)
+		if !strings.Contains(prettyOutput, "Format Test Incomplete") {
+			t.Errorf("Pretty filtered list should contain incomplete task: %s", prettyOutput)
+		}
+		if strings.Contains(prettyOutput, "Format Test Complete") {
+			t.Errorf("Pretty filtered list should not contain completed task: %s", prettyOutput)
+		}
+
+		// Test filter with json format
+		cmd = exec.Command(buildPath, "list", "--filter", "--format", "json")
+		output, err = cmd.CombinedOutput()
+		if err != nil {
+			t.Fatalf("Failed to list filtered tasks (json): %v\nOutput: %s", err, output)
+		}
+
+		jsonOutput := string(output)
+		if !strings.Contains(jsonOutput, "Format Test Incomplete") {
+			t.Errorf("JSON filtered list should contain incomplete task: %s", jsonOutput)
+		}
+		if strings.Contains(jsonOutput, "Format Test Complete") {
+			t.Errorf("JSON filtered list should not contain completed task: %s", jsonOutput)
+		}
+	})
+
+	t.Run("filter_with_global_flag", func(t *testing.T) {
+		// Clean up any existing files
+		homeDir, _ := os.UserHomeDir()
+		globalTodosPath := filepath.Join(homeDir, ".todo", "todos.json")
+		os.Remove(globalTodosPath)
+
+		// Add global tasks
+		cmd := exec.Command(buildPath, "--global", "add", "Global Complete Task")
+		output, err := cmd.CombinedOutput()
+		if err != nil {
+			t.Fatalf("Failed to add global task: %v\nOutput: %s", err, output)
+		}
+
+		cmd = exec.Command(buildPath, "--global", "add", "Global Incomplete Task")
+		output, err = cmd.CombinedOutput()
+		if err != nil {
+			t.Fatalf("Failed to add global task: %v\nOutput: %s", err, output)
+		}
+
+		// Complete first global task
+		cmd = exec.Command(buildPath, "--global", "toggle", "1")
+		output, err = cmd.CombinedOutput()
+		if err != nil {
+			t.Fatalf("Failed to toggle global task: %v\nOutput: %s", err, output)
+		}
+
+		// List filtered global tasks
+		cmd = exec.Command(buildPath, "--global", "list", "--filter", "--format", "json")
+		output, err = cmd.CombinedOutput()
+		if err != nil {
+			t.Fatalf("Failed to list filtered global tasks: %v\nOutput: %s", err, output)
+		}
+
+		outputStr := string(output)
+		if !strings.Contains(outputStr, "Global Incomplete Task") {
+			t.Errorf("Global filtered list should contain incomplete task: %s", outputStr)
+		}
+		if strings.Contains(outputStr, "Global Complete Task") {
+			t.Errorf("Global filtered list should not contain completed task: %s", outputStr)
+		}
+	})
+}

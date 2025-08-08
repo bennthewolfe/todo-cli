@@ -106,6 +106,10 @@ func (todoList *TodoList) View(format string) {
 	todoList.view(format)
 }
 
+func (todoList *TodoList) FilterIncomplete() {
+	todoList.filterIncomplete()
+}
+
 // Private methods
 func (todoList *TodoList) validateIndex(index int) error {
 	if index < 0 || index >= len(*todoList) {
@@ -332,6 +336,20 @@ func (todoList *TodoList) viewTable() {
 	}
 
 	t.Render()
+}
+
+func (todoList *TodoList) filterIncomplete() {
+	t := *todoList
+	filtered := make(TodoList, 0)
+
+	// Keep only incomplete tasks
+	for _, todo := range t {
+		if !todo.Completed {
+			filtered = append(filtered, todo)
+		}
+	}
+
+	*todoList = filtered
 }
 
 // GetStoragePath returns the appropriate storage path based on the global flag

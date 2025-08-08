@@ -28,6 +28,7 @@ type TodoListInterface interface {
 	Update(index int, task string) error
 	Toggle(index int) error
 	View(format string)
+	FilterIncomplete()
 }
 
 type TodoList []Todo
@@ -51,6 +52,10 @@ func (todoList *TodoList) Toggle(index int) error {
 
 func (todoList *TodoList) View(format string) {
 	todoList.view(format)
+}
+
+func (todoList *TodoList) FilterIncomplete() {
+	todoList.filterIncomplete()
 }
 
 func (todoList *TodoList) validateIndex(index int) error {
@@ -128,6 +133,20 @@ func (todoList *TodoList) update(index int, task string) error {
 	t[index].UpdatedAt = time.Now().Format(time.RFC3339)
 
 	return nil
+}
+
+func (todoList *TodoList) filterIncomplete() {
+	t := *todoList
+	filtered := make(TodoList, 0)
+
+	// Keep only incomplete tasks
+	for _, todo := range t {
+		if !todo.Completed {
+			filtered = append(filtered, todo)
+		}
+	}
+
+	*todoList = filtered
 }
 
 func (todoList *TodoList) view(format string) {
