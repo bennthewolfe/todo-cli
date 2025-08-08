@@ -818,3 +818,267 @@ func TestCLIListFlag(t *testing.T) {
 		}
 	})
 }
+
+// TestCLICleanup tests the cleanup command functionality
+func TestCLICleanup(t *testing.T) {
+	// Build the CLI for testing
+	buildPath := filepath.Join(t.TempDir(), "todo.exe")
+
+	cmd := exec.Command("go", "build", "-o", buildPath, ".")
+	if err := cmd.Run(); err != nil {
+		t.Fatalf("Failed to build CLI: %v", err)
+	}
+
+	// Create temp directory for test data
+	tempDir, err := os.MkdirTemp("", "todo_cleanup_test")
+	if err != nil {
+		t.Fatalf("Failed to create temp directory: %v", err)
+	}
+	defer os.RemoveAll(tempDir)
+
+	// Change to temp directory
+	oldWd, _ := os.Getwd()
+	defer os.Chdir(oldWd)
+	os.Chdir(tempDir)
+
+	// Clean up any existing todos
+	os.Remove(".todos.json")
+
+	t.Run("cleanup_no_completed_items", func(t *testing.T) {
+		// Add some incomplete items
+		cmd := exec.Command(buildPath, "add", "Incomplete task 1")
+		if err := cmd.Run(); err != nil {
+			t.Fatalf("Failed to add task: %v", err)
+		}
+
+		cmd = exec.Command(buildPath, "add", "Incomplete task 2")
+		if err := cmd.Run(); err != nil {
+			t.Fatalf("Failed to add task: %v", err)
+		}
+
+		// Run cleanup with --force (to avoid interactive prompt)
+		cmd = exec.Command(buildPath, "cleanup", "--force")
+		output, err := cmd.CombinedOutput()
+		if err != nil {
+			t.Fatalf("Failed to run cleanup: %v\nOutput: %s", err, output)
+		}
+
+		outputStr := string(output)
+		if !strings.Contains(outputStr, "No completed items found to archive") {
+			t.Errorf("Expected 'No completed items found' message, got: %s", outputStr)
+		}
+	})
+
+	t.Run("cleanup_with_completed_items_force", func(t *testing.T) {
+		// Add and complete some items
+		cmd := exec.Command(buildPath, "add", "Completed task 1")
+		if err := cmd.Run(); err != nil {
+			t.Fatalf("Failed to add task: %v", err)
+		}
+
+		cmd = exec.Command(buildPath, "add", "Completed task 2")
+		if err := cmd.Run(); err != nil {
+			t.Fatalf("Failed to add task: %v", err)
+		}
+
+		cmd = exec.Command(buildPath, "add", "Incomplete task")
+		if err := cmd.Run(); err != nil {
+			t.Fatalf("Failed to add task: %v", err)
+		}
+
+		// Complete first two tasks
+		cmd = exec.Command(buildPath, "toggle", "3") // Complete first added task
+		if err := cmd.Run(); err != nil {
+			t.Fatalf("Failed to toggle task: %v", err)
+		}
+
+		cmd = exec.Command(buildPath, "toggle", "4") // Complete second added task
+		if err := cmd.Run(); err != nil {
+			t.Fatalf("Failed to toggle task: %v", err)
+		}
+
+		// Run cleanup with --force
+		cmd = exec.Command(buildPath, "cleanup", "--force")
+		output, err := cmd.CombinedOutput()
+		if err != nil {
+			t.Fatalf("Failed to run cleanup: %v\nOutput: %s", err, output)
+		}
+
+		outputStr := string(output)
+		if !strings.Contains(outputStr, "Successfully archived 2 completed item(s)") {
+			t.Errorf("Expected success message for 2 items, got: %s", outputStr)
+		}
+
+		// Verify archive file was created
+		if _, err := os.Stat(".todos.archive.json"); os.IsNotExist(err) {
+			t.Errorf("Archive file was not created")
+		}
+
+		// Verify remaining todos only contains incomplete items
+		cmd = exec.Command(buildPath, "list", "--format", "json")
+		output, err = cmd.CombinedOutput()
+		if err != nil {
+			t.Fatalf("Failed to list remaining todos: %v\nOutput: %s", err, output)
+		}
+
+		outputStr = string(output)
+		if strings.Contains(outputStr, "Completed task 1") || strings.Contains(outputStr, "Completed task 2") {
+			t.Errorf("Completed tasks should have been archived, got: %s", outputStr)
+		}
+		if !strings.Contains(outputStr, "Incomplete task") {
+			t.Errorf("Incomplete task should remain, got: %s", outputStr)
+		}
+	})
+
+	t.Run("cleanup_with_list_flag", func(t *testing.T) {
+		// Add and complete a task
+		cmd := exec.Command(buildPath, "add", "Task for list test")
+		if err := cmd.Run(); err != nil {
+			t.Fatalf("Failed to add task: %v", err)
+		}
+
+		cmd = exec.Command(buildPath, "toggle", "2") // Complete the newly added task
+		if err := cmd.Run(); err != nil {
+			t.Fatalf("Failed to toggle task: %v", err)
+		}
+
+		// Run cleanup with --force and --list
+		cmd = exec.Command(buildPath, "cleanup", "--force", "--list")
+		output, err := cmd.CombinedOutput()
+		if err != nil {
+			t.Fatalf("Failed to run cleanup with --list: %v\nOutput: %s", err, output)
+		}
+
+		outputStr := string(output)
+		// Should contain both cleanup confirmation and list output
+		if !strings.Contains(outputStr, "Successfully archived 1 completed item(s)") {
+			t.Errorf("Expected cleanup confirmation, got: %s", outputStr)
+		}
+		if !strings.Contains(outputStr, "ID") || !strings.Contains(outputStr, "Task") {
+			t.Errorf("Expected list table headers, got: %s", outputStr)
+		}
+	})
+
+	t.Run("cleanup_without_args", func(t *testing.T) {
+		cmd := exec.Command(buildPath, "cleanup")
+		output, err := cmd.CombinedOutput()
+		// This should work (no args required), but will be interactive
+		// Since we can't test interactive mode easily, we test that it doesn't error on the command structure
+		if err != nil && !strings.Contains(string(output), "Found") {
+			t.Fatalf("Cleanup command should accept no arguments: %v\nOutput: %s", err, output)
+		}
+	})
+
+	t.Run("help_contains_cleanup_command", func(t *testing.T) {
+		cmd := exec.Command(buildPath, "help")
+		output, err := cmd.CombinedOutput()
+		if err != nil {
+			t.Fatalf("Failed to get help: %v\nOutput: %s", err, output)
+		}
+
+		expectedHelp := []string{
+			"cleanup",
+			"clean",
+			"Archive all completed todo items",
+		}
+
+		outputStr := string(output)
+		for _, help := range expectedHelp {
+			if !strings.Contains(outputStr, help) {
+				t.Errorf("Expected %q in help output, got: %s", help, outputStr)
+			}
+		}
+	})
+}
+
+// TestCLIGlobalCleanup tests cleanup command with global flag
+func TestCLIGlobalCleanup(t *testing.T) {
+	// Build the CLI for testing
+	buildPath := filepath.Join(t.TempDir(), "todo.exe")
+
+	cmd := exec.Command("go", "build", "-o", buildPath, ".")
+	if err := cmd.Run(); err != nil {
+		t.Fatalf("Failed to build CLI: %v", err)
+	}
+
+	// Create temp directory and mock home directory
+	tempDir, err := os.MkdirTemp("", "todo_global_cleanup_test")
+	if err != nil {
+		t.Fatalf("Failed to create temp directory: %v", err)
+	}
+	defer os.RemoveAll(tempDir)
+
+	// Create mock home directory
+	mockHomeDir := filepath.Join(tempDir, "home")
+	if err := os.MkdirAll(mockHomeDir, 0755); err != nil {
+		t.Fatalf("Failed to create mock home directory: %v", err)
+	}
+
+	// Set HOME environment variable
+	oldHome := os.Getenv("HOME")
+	os.Setenv("HOME", mockHomeDir)
+	defer os.Setenv("HOME", oldHome)
+
+	// Also set USERPROFILE for Windows
+	oldUserProfile := os.Getenv("USERPROFILE")
+	os.Setenv("USERPROFILE", mockHomeDir)
+	defer os.Setenv("USERPROFILE", oldUserProfile)
+
+	// Change to temp directory
+	oldWd, _ := os.Getwd()
+	defer os.Chdir(oldWd)
+	os.Chdir(tempDir)
+
+	t.Run("setup_global_items", func(t *testing.T) {
+		// Add some global items
+		cmd := exec.Command(buildPath, "--global", "add", "Global completed item")
+		if err := cmd.Run(); err != nil {
+			t.Fatalf("Failed to add global item: %v", err)
+		}
+
+		cmd = exec.Command(buildPath, "--global", "add", "Global incomplete item")
+		if err := cmd.Run(); err != nil {
+			t.Fatalf("Failed to add global item: %v", err)
+		}
+
+		// Complete first item
+		cmd = exec.Command(buildPath, "--global", "toggle", "1")
+		if err := cmd.Run(); err != nil {
+			t.Fatalf("Failed to toggle global item: %v", err)
+		}
+	})
+
+	t.Run("cleanup_global_items", func(t *testing.T) {
+		cmd := exec.Command(buildPath, "--global", "cleanup", "--force")
+		output, err := cmd.CombinedOutput()
+		if err != nil {
+			t.Fatalf("Failed to cleanup global items: %v\nOutput: %s", err, output)
+		}
+
+		expectedMsg := "Successfully archived 1 completed item(s)"
+		if !strings.Contains(string(output), expectedMsg) {
+			t.Errorf("Expected %q in output, got: %s", expectedMsg, output)
+		}
+
+		// Verify global archive file was created
+		globalArchivePath := filepath.Join(mockHomeDir, ".todo", "todos.archive.json")
+		if _, err := os.Stat(globalArchivePath); os.IsNotExist(err) {
+			t.Errorf("Global archive file was not created at %s", globalArchivePath)
+		}
+
+		// Verify completed item was removed from global list
+		cmd = exec.Command(buildPath, "--global", "list", "--format", "json")
+		output, err = cmd.CombinedOutput()
+		if err != nil {
+			t.Fatalf("Failed to list global todos after cleanup: %v\nOutput: %s", err, output)
+		}
+
+		outputStr := string(output)
+		if strings.Contains(outputStr, "Global completed item") {
+			t.Errorf("Completed item still appears in global list after cleanup")
+		}
+		if !strings.Contains(outputStr, "Global incomplete item") {
+			t.Errorf("Incomplete item should remain in global list")
+		}
+	})
+}

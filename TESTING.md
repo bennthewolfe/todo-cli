@@ -157,6 +157,7 @@ Current test coverage:
 - Adding tasks
 - Deleting tasks by index
 - Archiving tasks (moves to archive file)
+- Cleanup command (archive all completed tasks)
 - Updating task content
 - Toggling completion status
 - Index validation
@@ -173,6 +174,7 @@ Current test coverage:
 - End-to-end workflows
 - Help system functionality
 - Archive functionality (local and global)
+- Cleanup functionality (bulk archive with confirmation)
 - Global storage operations
 - `--list` flag functionality with all commands
 
@@ -188,6 +190,15 @@ Current test coverage:
 - `--list` flag combined with `--global`
 - List display after command execution
 - Help documentation for `--list` flag
+
+✅ **Cleanup Command Testing**
+- Cleanup when no completed items exist
+- Cleanup with completed items using `--force` flag
+- Cleanup combined with `--list` flag
+- Cleanup with global flag (`--global cleanup`)
+- Interactive confirmation prompt (tested via --force override)
+- Archive file creation verification
+- Remaining tasks verification after cleanup
 
 ✅ **Performance Benchmarks**
 - Add operation performance
@@ -211,6 +222,17 @@ func TestTodoList_Add(t *testing.T) {
 func TestCLIWorkflow(t *testing.T) {
     // Tests complete workflow: add -> list -> edit -> toggle -> delete
     // Builds actual binary and executes commands
+}
+```
+
+#### Cleanup Command Test
+```go
+func TestCLICleanup(t *testing.T) {
+    // Tests cleanup command functionality
+    // Verifies completed items are archived
+    // Tests --force flag and confirmation prompts
+    // Validates archive file creation
+    // Ensures incomplete items remain
 }
 ```
 

@@ -5,6 +5,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/urfave/cli/v3"
 )
 
 // Helper function to create a temporary test environment
@@ -143,6 +145,37 @@ func TestArchiveCommand_Creation(t *testing.T) {
 
 	if len(cmd.Aliases) == 0 || cmd.Aliases[0] != "ar" {
 		t.Errorf("NewArchiveCommand() should have alias 'ar'")
+	}
+}
+
+func TestCleanupCommand_Creation(t *testing.T) {
+	cmd := NewCleanupCommand()
+
+	if cmd.Name != "cleanup" {
+		t.Errorf("NewCleanupCommand() Name = %s, want 'cleanup'", cmd.Name)
+	}
+
+	if cmd.Usage != "Archive all completed todo items (moves to archive file)" {
+		t.Errorf("NewCleanupCommand() Usage incorrect")
+	}
+
+	if len(cmd.Aliases) == 0 || cmd.Aliases[0] != "clean" {
+		t.Errorf("NewCleanupCommand() should have alias 'clean'")
+	}
+
+	// Check for --force flag
+	hasForceFlag := false
+	for _, flag := range cmd.Flags {
+		if boolFlag, ok := flag.(*cli.BoolFlag); ok && boolFlag.Name == "force" {
+			hasForceFlag = true
+			if len(boolFlag.Aliases) == 0 || boolFlag.Aliases[0] != "f" {
+				t.Errorf("NewCleanupCommand() --force flag should have alias 'f'")
+			}
+			break
+		}
+	}
+	if !hasForceFlag {
+		t.Errorf("NewCleanupCommand() should have --force flag")
 	}
 }
 

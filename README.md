@@ -12,6 +12,7 @@ This based on the tutorial https://codingwithpatrik.dev/posts/how-to-build-a-cli
 - Delete tasks
 - Edit existing tasks
 - Archive tasks (moves to archive file)
+- Cleanup command to archive all completed tasks at once
 - Local and global storage options
 - Multiple output formats (table, JSON, pretty JSON)
 - `--list` flag to show todos after any command execution
@@ -112,6 +113,15 @@ Run the application using the following commands:
 # Archive and show remaining todos
 .\todo.exe archive 1 --list
 
+# Cleanup (archive all completed todos)
+.\todo.exe cleanup
+
+# Cleanup without confirmation prompt
+.\todo.exe cleanup --force
+
+# Cleanup and show remaining todos
+.\todo.exe cleanup --force --list
+
 # Show version
 .\todo.exe version
 
@@ -169,6 +179,9 @@ New-Item -ItemType SymbolicLink -Path <LINK> -Target <ACTUAL SOURCE>
 
 # Archive a global todo
 .\todo.exe --global archive 1
+
+# Cleanup all completed global todos
+.\todo.exe --global cleanup --force
 
 # Toggle completion and show updated list
 .\todo.exe --global toggle 1 --list
