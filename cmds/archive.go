@@ -84,6 +84,14 @@ func NewArchiveCommand() *cli.Command {
 			}
 
 			fmt.Printf("Archived todo item: %s\n", todoItem.Task)
+
+			// Check if --list flag is set and execute list command after archive
+			if CheckAndExecuteListFlag(c) {
+				if err := ExecuteListCommand(c); err != nil {
+					return cli.Exit(fmt.Sprintf("error executing list: %v", err), 2)
+				}
+			}
+
 			return nil
 		},
 	}

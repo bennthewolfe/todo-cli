@@ -23,6 +23,12 @@ func NewListCommand() *cli.Command {
 			},
 		},
 		Action: func(ctx context.Context, c *cli.Command) error {
+			// Check for --list flag - for list command, this should not change behavior
+			// But we still check to handle it consistently
+			if c.Bool("list") && c.Bool("debug") {
+				fmt.Println("DEBUG: --list flag detected on list command (no change in behavior)")
+			}
+
 			format := c.String("format")
 
 			// Validate format

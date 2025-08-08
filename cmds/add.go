@@ -46,6 +46,14 @@ func NewAddCommand() *cli.Command {
 			}
 
 			fmt.Printf("Added task: %s\n", task)
+
+			// Check if --list flag is set and execute list command after add
+			if CheckAndExecuteListFlag(c) {
+				if err := ExecuteListCommand(c); err != nil {
+					return cli.Exit(fmt.Sprintf("error executing list: %v", err), 2)
+				}
+			}
+
 			return nil
 		},
 	}

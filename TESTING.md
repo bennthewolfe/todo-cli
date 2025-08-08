@@ -173,6 +173,21 @@ Current test coverage:
 - End-to-end workflows
 - Help system functionality
 - Archive functionality (local and global)
+- Global storage operations
+- `--list` flag functionality with all commands
+
+✅ **Global Flag Support**
+- `--global` flag with all commands
+- `--list` flag with all commands
+- Combined flag usage (`--global --list`)
+- Multiple flag syntax positions
+
+✅ **List Flag Testing**
+- `--list` flag after command arguments
+- `--list` flag before command arguments
+- `--list` flag combined with `--global`
+- List display after command execution
+- Help documentation for `--list` flag
 
 ✅ **Performance Benchmarks**
 - Add operation performance

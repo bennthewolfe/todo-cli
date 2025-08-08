@@ -56,6 +56,14 @@ func NewEditCommand() *cli.Command {
 			}
 
 			fmt.Printf("Updated todo item %d: %s\n", id, newTask)
+
+			// Check if --list flag is set and execute list command after edit
+			if CheckAndExecuteListFlag(c) {
+				if err := ExecuteListCommand(c); err != nil {
+					return cli.Exit(fmt.Sprintf("error executing list: %v", err), 2)
+				}
+			}
+
 			return nil
 		},
 	}

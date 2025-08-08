@@ -196,7 +196,11 @@ func NewXCommand() *cli.Command {
         Usage:       "Brief description",
         ArgsUsage:   "<arguments>",
         Action: func(ctx context.Context, c *cli.Command) error {
-            // Get storage path
+            // CRITICAL: Global flags are automatically available in all commands
+            // Access via c.Bool("global"), c.Bool("list"), c.Bool("debug")
+            // regardless of flag position in command line
+            
+            // Get storage path (respects --global flag automatically)
             storagePath, err := GetStoragePath(c.Bool("global"))
             if err != nil {
                 return cli.Exit(fmt.Sprintf("error getting storage path: %v", err), 2)
@@ -211,26 +215,129 @@ func NewXCommand() *cli.Command {
             }
             *todoList = loadedList
 
-            // Perform operation...
+            // Perform main command operation...
 
             // Save changes
             if err := storage.Save(*todoList); err != nil {
                 return cli.Exit(fmt.Sprintf("error saving todos: %v", err), 2)
             }
+
+            // IMPORTANT: Check for --list flag at the END (after command completes)
+            // This pattern ensures command executes first, then shows list
+            if CheckAndExecuteListFlag(c) {
+                if err := ExecuteListCommand(c); err != nil {
+                    return cli.Exit(fmt.Sprintf("error executing list: %v", err), 2)
+                }
+            }
+
             return nil
         },
     }
 }
 ```
 
+**Global Flag Implementation Notes:**
+- Global flags are defined once in `main.go` and automatically inherited by all commands
+- No need to redeclare global flags in individual commands
+- Access pattern: `c.Bool("flagname")` works regardless of command-line position
+- The `--list` flag should be checked AFTER the main command operation completes
+- The `--global` flag affects storage path and should be checked early in command logic
+
 ### Global Flags (available on all commands)
 - `--debug`: Enable verbose debug output
 - `--global`, `-g`: Use global storage in `~/.todo/todos.json`
+- `--list`, `-l`: Show todo list after command execution (works with all commands)
+
+**Global Flag Positioning**: Global flags in urfave/cli/v3 can appear in multiple positions:
+- Before command: `todo --global --list add "task"`
+- After command: `todo add "task" --global --list`
+- Mixed positions: `todo --global add "task" --list`
+
+All positioning patterns are automatically handled by the framework and accessible via `c.Bool("flagname")` regardless of position.
+
+## Global Flag Handling Best Practices
+
+### Flag Access Patterns (Critical for all commands)
+```go
+// CORRECT: Access global flags anywhere in command
+isGlobal := c.Bool("global")      // Works regardless of CLI position
+showList := c.Bool("list")        // Works regardless of CLI position  
+isDebug := c.Bool("debug")        // Works regardless of CLI position
+
+// WRONG: Never redeclare global flags in individual commands
+// Global flags are inherited automatically from main.go
+```
+
+### Command Execution Order (Enforced pattern)
+1. **Parse and validate arguments** (check required args, validate IDs)
+2. **Get storage path** using `GetStoragePath(c.Bool("global"))`
+3. **Load data** from appropriate storage location
+4. **Execute main command logic** (add, delete, edit, etc.)
+5. **Save changes** to storage
+6. **Output command confirmation** (e.g., "Added task: xyz")
+7. **Check and execute --list flag** (if set, show updated list)
+
+### Storage Path Resolution
+```go
+// ALWAYS use this pattern for storage path
+storagePath, err := GetStoragePath(c.Bool("global"))
+if err != nil {
+    return cli.Exit(fmt.Sprintf("error getting storage path: %v", err), 2)
+}
+
+// For archive commands, also get archive path
+archivePath, err := GetArchivePath(c.Bool("global"))
+if err != nil {
+    return cli.Exit(fmt.Sprintf("error getting archive path: %v", err), 2)
+}
+```
+
+### List Flag Implementation (Required for all commands)
+```go
+// At the END of command execution (after save operations)
+if CheckAndExecuteListFlag(c) {
+    if err := ExecuteListCommand(c); err != nil {
+        return cli.Exit(fmt.Sprintf("error executing list: %v", err), 2)
+    }
+}
+```
+
+### Common Global Flag Patterns Validated
+These command patterns are all supported and tested:
+- `todo --global add "task"` (global before command)
+- `todo add "task" --global` (global after command)
+- `todo --list add "task"` (list before command)
+- `todo add "task" --list` (list after command)
+- `todo --global --list add "task"` (both flags before)
+- `todo add "task" --global --list` (both flags after)
+- `todo --global add "task" --list` (mixed positioning)
+
+### Debug Flag Usage
+```go
+if c.Bool("debug") {
+    fmt.Printf("DEBUG: Global flag: %v\n", c.Bool("global"))
+    fmt.Printf("DEBUG: List flag: %v\n", c.Bool("list"))
+    fmt.Printf("DEBUG: Storage path: %s\n", storagePath)
+}
+```
 
 ### Error Handling Standards
 - Use `cli.Exit(message, code)` for user-facing errors
 - Exit codes: 0=success, 1=general error, 2=file/storage error
 - Wrap errors: `fmt.Errorf("context: %w", err)`
+
+### Global Flag Troubleshooting
+**Common Issues:**
+- Flag not recognized: Ensure flag is defined in `main.go` global flags, not in individual commands
+- Flag position errors: Remember urfave/cli/v3 handles all positions automatically
+- Storage path issues: Always use `GetStoragePath(c.Bool("global"))` pattern
+- List not showing: Ensure `CheckAndExecuteListFlag(c)` is called AFTER main command logic
+
+**Testing Global Flags:**
+- Test all positioning patterns in integration tests
+- Verify both local and global storage work correctly  
+- Test flag combinations (`--global --list`, `--debug --global`, etc.)
+- Ensure storage isolation (global vs local don't interfere)
 
 ## Testing Requirements
 
@@ -247,11 +354,38 @@ func TestCLIAdd(t *testing.T)           // Integration test
 func BenchmarkAdd(b *testing.B)         // Benchmark test
 ```
 
+### Global Flag Testing Patterns
+When testing commands with global flags, use these patterns:
+
+**Integration Test Structure:**
+```go
+// Test all flag positioning patterns
+cmd := exec.Command(buildPath, "--global", "--list", "add", "task")     // Before command
+cmd := exec.Command(buildPath, "add", "task", "--global", "--list")     // After command  
+cmd := exec.Command(buildPath, "--global", "add", "task", "--list")     // Mixed position
+
+// Verify both command execution AND list output
+outputStr := string(output)
+if !strings.Contains(outputStr, "Added task: task") {
+    t.Errorf("Expected command confirmation")
+}
+if !strings.Contains(outputStr, "ID") || !strings.Contains(outputStr, "Task") {
+    t.Errorf("Expected list table headers")
+}
+```
+
+**Global Storage Testing:**
+- Always test both local and global storage paths
+- Verify storage separation (global vs local don't interfere)
+- Test flag combinations: `--global --list`, `--list --global`
+- Verify file creation in correct directories
+
 ### Required Tests for New Commands
 1. Command structure test in `commands_test.go`
-2. Integration test in `integration_test.go`
+2. Integration test in `integration_test.go` with global flag variations
 3. Error case coverage
-4. Benchmark if performance-critical
+4. Global flag positioning tests (before/after/mixed)
+5. Benchmark if performance-critical
 
 ## Development Workflow (validated)
 
@@ -261,6 +395,27 @@ func BenchmarkAdd(b *testing.B)         // Benchmark test
 3. Write tests (unit + integration)
 4. Run `.\makefile.ps1 check` (must pass)
 5. Verify coverage: `.\makefile.ps1 coverage` (≥80%)
+
+### Adding New Global Flags (Follow established pattern)
+1. **Add flag definition** in `main.go` Flags slice:
+```go
+&cli.BoolFlag{
+    Name:    "newflag",
+    Aliases: []string{"n"},
+    Usage:   "Description of what the flag does",
+},
+```
+2. **Update all commands** to handle the new flag (if applicable)
+3. **Add helper functions** in `cmds/utils.go` if needed
+4. **Write comprehensive tests** covering all flag positioning patterns
+5. **Update documentation** (README.md, TESTING.md, copilot-instructions.md)
+6. **Test flag combinations** with existing global flags
+
+### Global Flag Design Principles
+- **Consistency**: All global flags should work with all commands
+- **Position Independence**: Flags must work before, after, or mixed with commands
+- **Inheritance**: Never redeclare global flags in individual commands
+- **Order of Operations**: Global flags that affect behavior should be checked early, display flags (like `--list`) should be checked at the end
 
 ### Adding Build Targets (CRITICAL synchronization)
 **ALWAYS update both build systems identically:**

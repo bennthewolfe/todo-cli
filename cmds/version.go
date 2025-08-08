@@ -17,6 +17,14 @@ func NewVersionCommand() *cli.Command {
 		Action: func(ctx context.Context, c *cli.Command) error {
 			fmt.Println("TODO CLI Version:", config.Version)
 			fmt.Println("Release Date:", config.ReleaseDate)
+
+			// Check if --list flag is set and execute list command after version
+			if CheckAndExecuteListFlag(c) {
+				if err := ExecuteListCommand(c); err != nil {
+					return cli.Exit(fmt.Sprintf("error executing list: %v", err), 2)
+				}
+			}
+
 			return nil
 		},
 	}

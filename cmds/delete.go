@@ -52,6 +52,14 @@ func NewDeleteCommand() *cli.Command {
 			}
 
 			fmt.Printf("Deleted todo item with ID: %d\n", id)
+
+			// Check if --list flag is set and execute list command after delete
+			if CheckAndExecuteListFlag(c) {
+				if err := ExecuteListCommand(c); err != nil {
+					return cli.Exit(fmt.Sprintf("error executing list: %v", err), 2)
+				}
+			}
+
 			return nil
 		},
 	}

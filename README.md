@@ -14,6 +14,7 @@ This based on the tutorial https://codingwithpatrik.dev/posts/how-to-build-a-cli
 - Archive tasks (moves to archive file)
 - Local and global storage options
 - Multiple output formats (table, JSON, pretty JSON)
+- `--list` flag to show todos after any command execution
 
 ## Storage Options
 
@@ -32,6 +33,25 @@ Use the `--global` or `-g` flag to store todos in your user home directory at `~
 
 # Edit a global todo
 .\todo.exe --global edit 1 "Updated global task"
+```
+
+### List Flag
+Use the `--list` or `-l` flag with any command to display the todo list after the command executes. This flag works with all commands and can be combined with the global flag.
+
+```bash
+# Add a task and then show the list
+.\todo.exe add "New task" --list
+
+# Add a global task and show the global list
+.\todo.exe --global add "Global task" --list
+
+# Toggle a task and show the updated list
+.\todo.exe --list toggle 1
+
+# Edit and then list (multiple syntaxes supported)
+.\todo.exe edit 1 "Updated task" --list
+.\todo.exe --list edit 1 "Updated task"
+.\todo.exe --global --list edit 1 "Updated global task"
 ```
 
 ## Installation
@@ -60,6 +80,9 @@ Run the application using the following commands:
 # Add a new todo
 .\todo.exe add "Buy groceries"
 
+# Add a new todo and show the updated list
+.\todo.exe add "Buy groceries" --list
+
 # List todos in different formats
 .\todo.exe list                    # Table format (default)
 .\todo.exe list --format json      # JSON format
@@ -68,14 +91,26 @@ Run the application using the following commands:
 # Edit a todo
 .\todo.exe edit 1 "Updated task"
 
+# Edit a todo and show the updated list
+.\todo.exe edit 1 "Updated task" --list
+
 # Toggle completion status
 .\todo.exe toggle 1
+
+# Toggle and show updated list
+.\todo.exe --list toggle 1
 
 # Delete a todo
 .\todo.exe delete 1
 
+# Delete and show remaining todos
+.\todo.exe delete 1 --list
+
 # Archive a todo (moves to archive file)
 .\todo.exe archive 1
+
+# Archive and show remaining todos
+.\todo.exe archive 1 --list
 
 # Show version
 .\todo.exe version
@@ -135,9 +170,13 @@ New-Item -ItemType SymbolicLink -Path <LINK> -Target <ACTUAL SOURCE>
 # Archive a global todo
 .\todo.exe --global archive 1
 
-# Toggle completion
-.\todo.exe --global toggle 1
+# Toggle completion and show updated list
+.\todo.exe --global toggle 1 --list
 .\todo.exe --global list
+
+# Combine global and list flags in different positions
+.\todo.exe --global --list add "New global task"
+.\todo.exe --list --global add "Another global task"
 ```
 
 ## Development

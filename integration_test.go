@@ -681,3 +681,140 @@ func TestCLIGlobalArchive(t *testing.T) {
 		}
 	})
 }
+
+// TestCLIListFlag tests the --list flag functionality
+func TestCLIListFlag(t *testing.T) {
+	// Build the CLI for testing
+	buildPath := filepath.Join(t.TempDir(), "todo.exe")
+
+	cmd := exec.Command("go", "build", "-o", buildPath, ".")
+	if err := cmd.Run(); err != nil {
+		t.Fatalf("Failed to build CLI: %v", err)
+	}
+
+	// Create temp directory for test data
+	tempDir, err := os.MkdirTemp("", "todo_list_flag_test")
+	if err != nil {
+		t.Fatalf("Failed to create temp directory: %v", err)
+	}
+	defer os.RemoveAll(tempDir)
+
+	// Change to temp directory
+	oldWd, _ := os.Getwd()
+	defer os.Chdir(oldWd)
+	os.Chdir(tempDir)
+
+	// Clean up any existing todos
+	os.Remove(".todos.json")
+
+	t.Run("list_flag_with_add", func(t *testing.T) {
+		cmd := exec.Command(buildPath, "add", "Test item for list flag", "--list")
+		output, err := cmd.CombinedOutput()
+		if err != nil {
+			t.Fatalf("Failed to add task with --list flag: %v\nOutput: %s", err, output)
+		}
+
+		outputStr := string(output)
+		// Should contain both the add confirmation and the list output
+		if !strings.Contains(outputStr, "Added task: Test item for list flag") {
+			t.Errorf("Expected add confirmation in output, got: %s", outputStr)
+		}
+		if !strings.Contains(outputStr, "Test item for list flag") {
+			t.Errorf("Expected task to appear in list output, got: %s", outputStr)
+		}
+		// Should contain table headers
+		if !strings.Contains(outputStr, "ID") || !strings.Contains(outputStr, "Task") {
+			t.Errorf("Expected table headers in list output, got: %s", outputStr)
+		}
+	})
+
+	t.Run("list_flag_before_command", func(t *testing.T) {
+		cmd := exec.Command(buildPath, "--list", "toggle", "1")
+		output, err := cmd.CombinedOutput()
+		if err != nil {
+			t.Fatalf("Failed to toggle with --list flag: %v\nOutput: %s", err, output)
+		}
+
+		outputStr := string(output)
+		// Should contain both the toggle confirmation and the list output
+		if !strings.Contains(outputStr, "Toggled completion status for todo item with ID: 1") {
+			t.Errorf("Expected toggle confirmation in output, got: %s", outputStr)
+		}
+		// Should contain table output after the action
+		if !strings.Contains(outputStr, "Test item for list flag") {
+			t.Errorf("Expected task to appear in list output after toggle, got: %s", outputStr)
+		}
+	})
+
+	t.Run("list_flag_with_global", func(t *testing.T) {
+		cmd := exec.Command(buildPath, "--global", "add", "Global item with list flag", "--list")
+		output, err := cmd.CombinedOutput()
+		if err != nil {
+			t.Fatalf("Failed to add global task with --list flag: %v\nOutput: %s", err, output)
+		}
+
+		outputStr := string(output)
+		// Should contain both the add confirmation and the global list output
+		if !strings.Contains(outputStr, "Added task: Global item with list flag") {
+			t.Errorf("Expected add confirmation in output, got: %s", outputStr)
+		}
+		if !strings.Contains(outputStr, "Global item with list flag") {
+			t.Errorf("Expected global task to appear in list output, got: %s", outputStr)
+		}
+	})
+
+	t.Run("list_flag_with_global_before_command", func(t *testing.T) {
+		cmd := exec.Command(buildPath, "--global", "--list", "edit", "1", "Updated global item")
+		output, err := cmd.CombinedOutput()
+		if err != nil {
+			t.Fatalf("Failed to edit global task with --list flag: %v\nOutput: %s", err, output)
+		}
+
+		outputStr := string(output)
+		// Should contain both the edit confirmation and the list output
+		if !strings.Contains(outputStr, "Updated todo item 1: Updated global item") {
+			t.Errorf("Expected edit confirmation in output, got: %s", outputStr)
+		}
+		if !strings.Contains(outputStr, "Updated global item") {
+			t.Errorf("Expected updated task to appear in list output, got: %s", outputStr)
+		}
+	})
+
+	t.Run("list_flag_with_version", func(t *testing.T) {
+		cmd := exec.Command(buildPath, "version", "--list")
+		output, err := cmd.CombinedOutput()
+		if err != nil {
+			t.Fatalf("Failed to run version with --list flag: %v\nOutput: %s", err, output)
+		}
+
+		outputStr := string(output)
+		// Should contain both the version info and the list output
+		if !strings.Contains(outputStr, "TODO CLI Version:") {
+			t.Errorf("Expected version info in output, got: %s", outputStr)
+		}
+		if !strings.Contains(outputStr, "Test item for list flag") {
+			t.Errorf("Expected task to appear in list output after version, got: %s", outputStr)
+		}
+	})
+
+	t.Run("help_contains_list_flag", func(t *testing.T) {
+		cmd := exec.Command(buildPath, "help")
+		output, err := cmd.CombinedOutput()
+		if err != nil {
+			t.Fatalf("Failed to get help: %v\nOutput: %s", err, output)
+		}
+
+		expectedFlags := []string{
+			"--list",
+			"-l",
+			"List all todo items (overrides other commands)",
+		}
+
+		outputStr := string(output)
+		for _, flag := range expectedFlags {
+			if !strings.Contains(outputStr, flag) {
+				t.Errorf("Expected %q in help output, got: %s", flag, outputStr)
+			}
+		}
+	})
+}

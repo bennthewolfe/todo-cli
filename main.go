@@ -30,6 +30,11 @@ func main() {
 				Aliases: []string{"g"},
 				Usage:   "Use global todo storage in user's home directory (~/.todo/todos.json)",
 			},
+			&cli.BoolFlag{
+				Name:    "list",
+				Aliases: []string{"l"},
+				Usage:   "List all todo items (overrides other commands)",
+			},
 		},
 
 		// Default action when no command is specified
@@ -38,6 +43,14 @@ func main() {
 				fmt.Println("DEBUG: Debug mode enabled")
 				fmt.Printf("DEBUG: Args: %v\n", c.Args().Slice())
 				fmt.Printf("DEBUG: Global flag: %v\n", c.Bool("global"))
+				fmt.Printf("DEBUG: List flag: %v\n", c.Bool("list"))
+			}
+
+			// If --list flag is set, show the list regardless of other arguments
+			if c.Bool("list") {
+				if c.Bool("debug") {
+					fmt.Println("DEBUG: --list flag detected, showing todo list")
+				}
 			}
 
 			// Get the appropriate storage path
@@ -46,7 +59,7 @@ func main() {
 				return cli.Exit(fmt.Sprintf("error getting storage path: %v", err), 2)
 			}
 
-			// Default to list command with table format
+			// Default to list command with table format (or when --list flag is used)
 			// Initialize todo list directly
 			todoList := &commands.TodoList{}
 			storage := commands.NewStorage[commands.TodoList](storagePath)

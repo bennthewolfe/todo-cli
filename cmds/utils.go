@@ -12,6 +12,7 @@ import (
 
 	"github.com/aquasecurity/table"
 	"github.com/liamg/tml"
+	"github.com/urfave/cli/v3"
 )
 
 // Storage represents the storage interface for TodoList
@@ -373,6 +374,36 @@ func GetArchivePath(isGlobal bool) (string, error) {
 	}
 
 	return filepath.Join(todoDir, "todos.archive.json"), nil
+}
+
+// CheckAndExecuteListFlag checks if the --list flag is set and executes list command if so
+// Returns true if list should be executed after the main command, false otherwise
+func CheckAndExecuteListFlag(c *cli.Command) bool {
+	return c.Bool("list")
+}
+
+// ExecuteListCommand executes the list command with table format
+func ExecuteListCommand(c *cli.Command) error {
+	if c.Bool("debug") {
+		fmt.Println("DEBUG: Executing list command after main action")
+	}
+
+	// Get the appropriate storage path based on global flag
+	storagePath, err := GetStoragePath(c.Bool("global"))
+	if err != nil {
+		return fmt.Errorf("error getting storage path: %w", err)
+	}
+
+	// Initialize todo list and storage
+	todoList, _, err := initializeTodoListWithPath(storagePath)
+	if err != nil {
+		return fmt.Errorf("failed to initialize todo list: %w", err)
+	}
+
+	// Display todos with table format (default)
+	fmt.Println() // Add a blank line before list output
+	todoList.View("table")
+	return nil
 }
 
 // initializeTodoList initializes the todo list and storage with custom path
