@@ -18,7 +18,7 @@ func main() {
 		Description: "Todo CLI is a command-line application for managing a to-do list. " +
 			"It allows users to add, view, and manage tasks efficiently. " +
 			"This project is inspired by the tutorial from https://codingwithpatrik.dev/posts/how-to-build-a-cli-todo-app-in-go/.",
-
+		UsageText: "todo [global options] command [command options] [arguments...]",
 		// Global flags
 		Flags: []cli.Flag{
 			&cli.BoolFlag{
@@ -91,6 +91,17 @@ func main() {
 			// Removed NewHelpCommand() - using urfave/cli built-in help instead
 		},
 	}
+
+	// Append examples to global help
+	cli.RootCommandHelpTemplate = fmt.Sprintf(`%s
+EXAMPLES:
+	todo add "Buy groceries"
+	todo delete 2
+	todo edit 1 "Read a book"
+	todo toggle 1
+	todo list --format json
+	todo list --format json | jq '[.[] | select(.completed == false)]'
+	`, cli.RootCommandHelpTemplate)
 
 	if err := app.Run(context.Background(), os.Args); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
