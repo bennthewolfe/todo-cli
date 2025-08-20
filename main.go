@@ -87,6 +87,7 @@ func main() {
 			commands.NewEditCommand(),
 			commands.NewListCommand(),
 			commands.NewToggleCommand(),
+			commands.NewConfigCommand(),
 			commands.NewVersionCommand(),
 			// Removed NewHelpCommand() - using urfave/cli built-in help instead
 		},

@@ -1,22 +1,48 @@
 package main
 
 import (
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strings"
 	"testing"
+	"time"
+	"sync"
 )
+var (
+	buildOnce sync.Once
+	builtPath string
+)
+
+func buildSharedBinary() {
+	buildOnce.Do(func() {
+		bp := filepath.Join(os.TempDir(), "todo-test-binary.exe")
+		cmd := exec.Command("go", "build", "-o", bp, ".")
+		if err := cmd.Run(); err != nil {
+			fmt.Fprintf(os.Stderr, "failed to build shared test binary: %v\n", err)
+			return
+		}
+		builtPath = bp
+		os.Setenv("TEST_TODO_BIN", builtPath)
+	})
+}
+
+func init() {
+	buildSharedBinary()
+}
 
 // TestCLIIntegration tests the CLI application end-to-end
 func TestCLIIntegration(t *testing.T) {
-	// Build the CLI for testing
-	buildPath := filepath.Join(t.TempDir(), "todo.exe")
-
-	cmd := exec.Command("go", "build", "-o", buildPath, ".")
-	if err := cmd.Run(); err != nil {
-		t.Fatalf("Failed to build CLI: %v", err)
+	// Use shared test binary if provided by TestMain, otherwise build locally
+	buildPath := os.Getenv("TEST_TODO_BIN")
+	if buildPath == "" {
+		buildPath = filepath.Join(t.TempDir(), "todo.exe")
+		cmd := exec.Command("go", "build", "-o", buildPath, ".")
+		if err := cmd.Run(); err != nil {
+			t.Fatalf("Failed to build CLI: %v", err)
+		}
 	}
 
 	// Create temp directory for test data
@@ -148,12 +174,14 @@ func TestCLIIntegration(t *testing.T) {
 
 // TestCLIWorkflow tests a complete workflow
 func TestCLIWorkflow(t *testing.T) {
-	// Build the CLI for testing
-	buildPath := filepath.Join(t.TempDir(), "todo.exe")
-
-	cmd := exec.Command("go", "build", "-o", buildPath, ".")
-	if err := cmd.Run(); err != nil {
-		t.Fatalf("Failed to build CLI: %v", err)
+	// Use shared test binary if available, otherwise build locally
+	buildPath := os.Getenv("TEST_TODO_BIN")
+	if buildPath == "" {
+		buildPath = filepath.Join(t.TempDir(), "todo.exe")
+		cmd := exec.Command("go", "build", "-o", buildPath, ".")
+		if err := cmd.Run(); err != nil {
+			t.Fatalf("Failed to build CLI: %v", err)
+		}
 	}
 
 	// Create temp directory for test data
@@ -171,7 +199,7 @@ func TestCLIWorkflow(t *testing.T) {
 	// Test workflow: add -> list -> edit -> toggle -> delete
 
 	// 1. Add a task
-	cmd = exec.Command(buildPath, "add", "Buy groceries")
+	cmd := exec.Command(buildPath, "add", "Buy groceries")
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		t.Fatalf("Failed to add task: %v, output: %s", err, output)
@@ -256,12 +284,14 @@ func TestCLIWorkflow(t *testing.T) {
 
 // TestCLIHelp tests help functionality
 func TestCLIHelp(t *testing.T) {
-	// Build the CLI for testing
-	buildPath := filepath.Join(t.TempDir(), "todo.exe")
-
-	cmd := exec.Command("go", "build", "-o", buildPath, ".")
-	if err := cmd.Run(); err != nil {
-		t.Fatalf("Failed to build CLI: %v", err)
+	// Use shared test binary if available, otherwise build locally
+	buildPath := os.Getenv("TEST_TODO_BIN")
+	if buildPath == "" {
+		buildPath = filepath.Join(t.TempDir(), "todo.exe")
+		cmd := exec.Command("go", "build", "-o", buildPath, ".")
+		if err := cmd.Run(); err != nil {
+			t.Fatalf("Failed to build CLI: %v", err)
+		}
 	}
 
 	tests := []struct {
@@ -315,12 +345,14 @@ func TestCLIHelp(t *testing.T) {
 
 // TestCLIGlobalStorage tests the global storage functionality
 func TestCLIGlobalStorage(t *testing.T) {
-	// Build the CLI for testing
-	buildPath := filepath.Join(t.TempDir(), "todo.exe")
-
-	cmd := exec.Command("go", "build", "-o", buildPath, ".")
-	if err := cmd.Run(); err != nil {
-		t.Fatalf("Failed to build CLI: %v", err)
+	// Use shared test binary if available, otherwise build locally
+	buildPath := os.Getenv("TEST_TODO_BIN")
+	if buildPath == "" {
+		buildPath = filepath.Join(t.TempDir(), "todo.exe")
+		cmd := exec.Command("go", "build", "-o", buildPath, ".")
+		if err := cmd.Run(); err != nil {
+			t.Fatalf("Failed to build CLI: %v", err)
+		}
 	}
 
 	// Create temp directory for test data
@@ -373,6 +405,16 @@ func TestCLIGlobalStorage(t *testing.T) {
 
 	// Test listing global todos
 	t.Run("list_global_todos", func(t *testing.T) {
+		// Ensure global storage is in a known state for this subtest
+		globalStoragePath := filepath.Join(mockHomeDir, ".todo", "todos.json")
+		os.Remove(globalStoragePath)
+
+		// Add the expected global todo for this subtest
+		addCmd := exec.Command(buildPath, "--global", "add", "Global test task")
+		if out, err := addCmd.CombinedOutput(); err != nil {
+			t.Fatalf("Failed to add global todo for list_global_todos setup: %v\nOutput: %s", err, out)
+		}
+
 		cmd := exec.Command(buildPath, "--global", "list")
 		output, err := cmd.CombinedOutput()
 		if err != nil {
@@ -401,6 +443,20 @@ func TestCLIGlobalStorage(t *testing.T) {
 
 	// Test that local and global storage are separate
 	t.Run("storage_separation", func(t *testing.T) {
+		// Ensure both a local and a global todo exist for this subtest in a clean state
+		homeDir, _ := os.UserHomeDir()
+		globalTodosPath := filepath.Join(homeDir, ".todo", "todos.json")
+		os.Remove(globalTodosPath)
+		os.Remove(".todos.json")
+
+		// Add global and local todos
+		if out, err := exec.Command(buildPath, "--global", "add", "Global test task").CombinedOutput(); err != nil {
+			t.Fatalf("Failed to add global todo for storage_separation setup: %v\nOutput: %s", err, out)
+		}
+		if out, err := exec.Command(buildPath, "add", "Local test task").CombinedOutput(); err != nil {
+			t.Fatalf("Failed to add local todo for storage_separation setup: %v\nOutput: %s", err, out)
+		}
+
 		// List local todos
 		cmd := exec.Command(buildPath, "list")
 		output, err := cmd.CombinedOutput()
@@ -434,6 +490,14 @@ func TestCLIGlobalStorage(t *testing.T) {
 
 	// Test default action with global flag
 	t.Run("default_action_global", func(t *testing.T) {
+		// Ensure a global todo exists for this subtest
+		homeDir, _ := os.UserHomeDir()
+		globalTodosPath := filepath.Join(homeDir, ".todo", "todos.json")
+		os.Remove(globalTodosPath)
+		if out, err := exec.Command(buildPath, "--global", "add", "Global test task").CombinedOutput(); err != nil {
+			t.Fatalf("Failed to add global todo for default_action_global setup: %v\nOutput: %s", err, out)
+		}
+
 		cmd := exec.Command(buildPath, "--global")
 		output, err := cmd.CombinedOutput()
 		if err != nil {
@@ -448,6 +512,14 @@ func TestCLIGlobalStorage(t *testing.T) {
 
 	// Test global flag with other commands
 	t.Run("global_toggle", func(t *testing.T) {
+		// Ensure a global todo exists and is in a clean state
+		homeDir, _ := os.UserHomeDir()
+		globalTodosPath := filepath.Join(homeDir, ".todo", "todos.json")
+		os.Remove(globalTodosPath)
+		if out, err := exec.Command(buildPath, "--global", "add", "Global test task").CombinedOutput(); err != nil {
+			t.Fatalf("Failed to add global todo for global_toggle setup: %v\nOutput: %s", err, out)
+		}
+
 		cmd := exec.Command(buildPath, "--global", "toggle", "1")
 		output, err := cmd.CombinedOutput()
 		if err != nil {
@@ -493,15 +565,17 @@ func TestCLIGlobalStorage(t *testing.T) {
 
 // TestCLIArchive tests the archive command functionality
 func TestCLIArchive(t *testing.T) {
-	// Build the CLI for testing
-	buildPath := filepath.Join(t.TempDir(), "todo.exe")
-	if runtime.GOOS != "windows" {
-		buildPath = filepath.Join(t.TempDir(), "todo")
-	}
-
-	cmd := exec.Command("go", "build", "-o", buildPath, ".")
-	if err := cmd.Run(); err != nil {
-		t.Fatalf("Failed to build CLI: %v", err)
+	// Use shared test binary if available, otherwise build locally
+	buildPath := os.Getenv("TEST_TODO_BIN")
+	if buildPath == "" {
+		buildPath = filepath.Join(t.TempDir(), "todo.exe")
+		if runtime.GOOS != "windows" {
+			buildPath = filepath.Join(t.TempDir(), "todo")
+		}
+		cmd := exec.Command("go", "build", "-o", buildPath, ".")
+		if err := cmd.Run(); err != nil {
+			t.Fatalf("Failed to build CLI: %v", err)
+		}
 	}
 
 	// Create temporary directory for testing
@@ -610,15 +684,17 @@ func TestCLIArchive(t *testing.T) {
 
 // TestCLIGlobalArchive tests archive command with global flag
 func TestCLIGlobalArchive(t *testing.T) {
-	// Build the CLI for testing
-	buildPath := filepath.Join(t.TempDir(), "todo.exe")
-	if runtime.GOOS != "windows" {
-		buildPath = filepath.Join(t.TempDir(), "todo")
-	}
-
-	cmd := exec.Command("go", "build", "-o", buildPath, ".")
-	if err := cmd.Run(); err != nil {
-		t.Fatalf("Failed to build CLI: %v", err)
+	// Use shared test binary if available, otherwise build locally
+	buildPath := os.Getenv("TEST_TODO_BIN")
+	if buildPath == "" {
+		buildPath = filepath.Join(t.TempDir(), "todo.exe")
+		if runtime.GOOS != "windows" {
+			buildPath = filepath.Join(t.TempDir(), "todo")
+		}
+		cmd := exec.Command("go", "build", "-o", buildPath, ".")
+		if err := cmd.Run(); err != nil {
+			t.Fatalf("Failed to build CLI: %v", err)
+		}
 	}
 
 	// Create temporary directory to use as mock home
@@ -684,12 +760,14 @@ func TestCLIGlobalArchive(t *testing.T) {
 
 // TestCLIListFlag tests the --list flag functionality
 func TestCLIListFlag(t *testing.T) {
-	// Build the CLI for testing
-	buildPath := filepath.Join(t.TempDir(), "todo.exe")
-
-	cmd := exec.Command("go", "build", "-o", buildPath, ".")
-	if err := cmd.Run(); err != nil {
-		t.Fatalf("Failed to build CLI: %v", err)
+	// Use shared test binary if available, otherwise build locally
+	buildPath := os.Getenv("TEST_TODO_BIN")
+	if buildPath == "" {
+		buildPath = filepath.Join(t.TempDir(), "todo.exe")
+		cmd := exec.Command("go", "build", "-o", buildPath, ".")
+		if err := cmd.Run(); err != nil {
+			t.Fatalf("Failed to build CLI: %v", err)
+		}
 	}
 
 	// Create temp directory for test data
@@ -729,6 +807,12 @@ func TestCLIListFlag(t *testing.T) {
 	})
 
 	t.Run("list_flag_before_command", func(t *testing.T) {
+		// Ensure the item to toggle exists when this subtest runs in isolation
+		addCmd := exec.Command(buildPath, "add", "Test item for list flag")
+		if out, err := addCmd.CombinedOutput(); err != nil {
+			t.Fatalf("Failed to add task for list_flag_before_command setup: %v\nOutput: %s", err, out)
+		}
+
 		cmd := exec.Command(buildPath, "--list", "toggle", "1")
 		output, err := cmd.CombinedOutput()
 		if err != nil {
@@ -781,6 +865,12 @@ func TestCLIListFlag(t *testing.T) {
 	})
 
 	t.Run("list_flag_with_version", func(t *testing.T) {
+		// Ensure there is an item to be shown by the list after running version
+		addCmd := exec.Command(buildPath, "add", "Test item for list flag")
+		if out, err := addCmd.CombinedOutput(); err != nil {
+			t.Fatalf("Failed to add task for list_flag_with_version setup: %v\nOutput: %s", err, out)
+		}
+
 		cmd := exec.Command(buildPath, "version", "--list")
 		output, err := cmd.CombinedOutput()
 		if err != nil {
@@ -821,12 +911,14 @@ func TestCLIListFlag(t *testing.T) {
 
 // TestCLICleanup tests the cleanup command functionality
 func TestCLICleanup(t *testing.T) {
-	// Build the CLI for testing
-	buildPath := filepath.Join(t.TempDir(), "todo.exe")
-
-	cmd := exec.Command("go", "build", "-o", buildPath, ".")
-	if err := cmd.Run(); err != nil {
-		t.Fatalf("Failed to build CLI: %v", err)
+	// Use shared test binary if available, otherwise build locally
+	buildPath := os.Getenv("TEST_TODO_BIN")
+	if buildPath == "" {
+		buildPath = filepath.Join(t.TempDir(), "todo.exe")
+		cmd := exec.Command("go", "build", "-o", buildPath, ".")
+		if err := cmd.Run(); err != nil {
+			t.Fatalf("Failed to build CLI: %v", err)
+		}
 	}
 
 	// Create temp directory for test data
@@ -870,35 +962,33 @@ func TestCLICleanup(t *testing.T) {
 	})
 
 	t.Run("cleanup_with_completed_items_force", func(t *testing.T) {
+		// Ensure a clean todos file for this subtest
+		os.Remove(".todos.json")
+
 		// Add and complete some items
-		cmd := exec.Command(buildPath, "add", "Completed task 1")
-		if err := cmd.Run(); err != nil {
-			t.Fatalf("Failed to add task: %v", err)
+		if out, err := exec.Command(buildPath, "add", "Completed task 1").CombinedOutput(); err != nil {
+			t.Fatalf("Failed to add task: %v\nOutput: %s", err, out)
 		}
 
-		cmd = exec.Command(buildPath, "add", "Completed task 2")
-		if err := cmd.Run(); err != nil {
-			t.Fatalf("Failed to add task: %v", err)
+		if out, err := exec.Command(buildPath, "add", "Completed task 2").CombinedOutput(); err != nil {
+			t.Fatalf("Failed to add task: %v\nOutput: %s", err, out)
 		}
 
-		cmd = exec.Command(buildPath, "add", "Incomplete task")
-		if err := cmd.Run(); err != nil {
-			t.Fatalf("Failed to add task: %v", err)
+		if out, err := exec.Command(buildPath, "add", "Incomplete task").CombinedOutput(); err != nil {
+			t.Fatalf("Failed to add task: %v\nOutput: %s", err, out)
 		}
 
-		// Complete first two tasks
-		cmd = exec.Command(buildPath, "toggle", "3") // Complete first added task
-		if err := cmd.Run(); err != nil {
-			t.Fatalf("Failed to toggle task: %v", err)
+		// Complete first two tasks (IDs should be 1 and 2)
+		if out, err := exec.Command(buildPath, "toggle", "1").CombinedOutput(); err != nil {
+			t.Fatalf("Failed to toggle task: %v\nOutput: %s", err, out)
 		}
 
-		cmd = exec.Command(buildPath, "toggle", "4") // Complete second added task
-		if err := cmd.Run(); err != nil {
-			t.Fatalf("Failed to toggle task: %v", err)
+		if out, err := exec.Command(buildPath, "toggle", "2").CombinedOutput(); err != nil {
+			t.Fatalf("Failed to toggle task: %v\nOutput: %s", err, out)
 		}
 
 		// Run cleanup with --force
-		cmd = exec.Command(buildPath, "cleanup", "--force")
+		cmd := exec.Command(buildPath, "cleanup", "--force")
 		output, err := cmd.CombinedOutput()
 		if err != nil {
 			t.Fatalf("Failed to run cleanup: %v\nOutput: %s", err, output)
@@ -931,19 +1021,20 @@ func TestCLICleanup(t *testing.T) {
 	})
 
 	t.Run("cleanup_with_list_flag", func(t *testing.T) {
+		// Ensure clean state
+		os.Remove(".todos.json")
+
 		// Add and complete a task
-		cmd := exec.Command(buildPath, "add", "Task for list test")
-		if err := cmd.Run(); err != nil {
-			t.Fatalf("Failed to add task: %v", err)
+		if out, err := exec.Command(buildPath, "add", "Task for list test").CombinedOutput(); err != nil {
+			t.Fatalf("Failed to add task: %v\nOutput: %s", err, out)
 		}
 
-		cmd = exec.Command(buildPath, "toggle", "2") // Complete the newly added task
-		if err := cmd.Run(); err != nil {
-			t.Fatalf("Failed to toggle task: %v", err)
+		if out, err := exec.Command(buildPath, "toggle", "1").CombinedOutput(); err != nil {
+			t.Fatalf("Failed to toggle task: %v\nOutput: %s", err, out)
 		}
 
 		// Run cleanup with --force and --list
-		cmd = exec.Command(buildPath, "cleanup", "--force", "--list")
+		cmd := exec.Command(buildPath, "cleanup", "--force", "--list")
 		output, err := cmd.CombinedOutput()
 		if err != nil {
 			t.Fatalf("Failed to run cleanup with --list: %v\nOutput: %s", err, output)
@@ -975,34 +1066,29 @@ func TestCLICleanup(t *testing.T) {
 		os.Remove(".todos.archive.json")
 
 		// Add and complete some items for delete testing
-		cmd := exec.Command(buildPath, "add", "Delete test task 1")
-		if err := cmd.Run(); err != nil {
-			t.Fatalf("Failed to add task: %v", err)
+		if out, err := exec.Command(buildPath, "add", "Delete test task 1").CombinedOutput(); err != nil {
+			t.Fatalf("Failed to add task: %v\nOutput: %s", err, out)
 		}
 
-		cmd = exec.Command(buildPath, "add", "Delete test task 2")
-		if err := cmd.Run(); err != nil {
-			t.Fatalf("Failed to add task: %v", err)
+		if out, err := exec.Command(buildPath, "add", "Delete test task 2").CombinedOutput(); err != nil {
+			t.Fatalf("Failed to add task: %v\nOutput: %s", err, out)
 		}
 
-		cmd = exec.Command(buildPath, "add", "Keep this task")
-		if err := cmd.Run(); err != nil {
-			t.Fatalf("Failed to add task: %v", err)
+		if out, err := exec.Command(buildPath, "add", "Keep this task").CombinedOutput(); err != nil {
+			t.Fatalf("Failed to add task: %v\nOutput: %s", err, out)
 		}
 
 		// Complete first two tasks (they should be IDs 1 and 2)
-		cmd = exec.Command(buildPath, "toggle", "1")
-		if err := cmd.Run(); err != nil {
-			t.Fatalf("Failed to toggle task 1: %v", err)
+		if out, err := exec.Command(buildPath, "toggle", "1").CombinedOutput(); err != nil {
+			t.Fatalf("Failed to toggle task 1: %v\nOutput: %s", err, out)
 		}
 
-		cmd = exec.Command(buildPath, "toggle", "2")
-		if err := cmd.Run(); err != nil {
-			t.Fatalf("Failed to toggle task 2: %v", err)
+		if out, err := exec.Command(buildPath, "toggle", "2").CombinedOutput(); err != nil {
+			t.Fatalf("Failed to toggle task 2: %v\nOutput: %s", err, out)
 		}
 
 		// Run cleanup with --delete and --force
-		cmd = exec.Command(buildPath, "cleanup", "--delete", "--force")
+		cmd := exec.Command(buildPath, "cleanup", "--delete", "--force")
 		output, err := cmd.CombinedOutput()
 		if err != nil {
 			t.Fatalf("Failed to run cleanup --delete: %v\nOutput: %s", err, output)
@@ -1065,12 +1151,14 @@ func TestCLICleanup(t *testing.T) {
 
 // TestCLIGlobalCleanup tests cleanup command with global flag
 func TestCLIGlobalCleanup(t *testing.T) {
-	// Build the CLI for testing
-	buildPath := filepath.Join(t.TempDir(), "todo.exe")
-
-	cmd := exec.Command("go", "build", "-o", buildPath, ".")
-	if err := cmd.Run(); err != nil {
-		t.Fatalf("Failed to build CLI: %v", err)
+	// Use shared test binary if available, otherwise build locally
+	buildPath := os.Getenv("TEST_TODO_BIN")
+	if buildPath == "" {
+		buildPath = filepath.Join(t.TempDir(), "todo.exe")
+		cmd := exec.Command("go", "build", "-o", buildPath, ".")
+		if err := cmd.Run(); err != nil {
+			t.Fatalf("Failed to build CLI: %v", err)
+		}
 	}
 
 	// Create temp directory and mock home directory
@@ -1157,12 +1245,18 @@ func TestCLIGlobalCleanup(t *testing.T) {
 
 // TestCLIArchiveFlag tests the --archive global flag functionality
 func TestCLIArchiveFlag(t *testing.T) {
-	// Build the CLI for testing
-	buildPath := filepath.Join(t.TempDir(), "todo.exe")
+	// Prefer shared test binary if provided by the TestMain helper; otherwise build once for this test
+	buildPath := os.Getenv("TEST_TODO_BIN")
+	if buildPath == "" {
+		buildPath = filepath.Join(t.TempDir(), "todo.exe")
+		if runtime.GOOS != "windows" {
+			buildPath = filepath.Join(t.TempDir(), "todo")
+		}
 
-	cmd := exec.Command("go", "build", "-o", buildPath, ".")
-	if err := cmd.Run(); err != nil {
-		t.Fatalf("Failed to build CLI: %v", err)
+		cmd := exec.Command("go", "build", "-o", buildPath, ".")
+		if err := cmd.Run(); err != nil {
+			t.Fatalf("Failed to build CLI: %v", err)
+		}
 	}
 
 	// Create temp directory for test data
@@ -1172,16 +1266,33 @@ func TestCLIArchiveFlag(t *testing.T) {
 	}
 	defer os.RemoveAll(tempDir)
 
-	// Change to temp directory
+	// Change to temp directory for the test and provide a helper to create per-subtest working dirs
 	oldWd, _ := os.Getwd()
 	defer os.Chdir(oldWd)
-	os.Chdir(tempDir)
+	if err := os.Chdir(tempDir); err != nil {
+		t.Fatalf("failed to chdir to tempDir: %v", err)
+	}
 
-	// Clean up any existing files
+	// helper to create and chdir into a per-subtest directory; returns previous wd
+	mkWd := func(name string) string {
+		wd := filepath.Join(tempDir, name)
+		if err := os.MkdirAll(wd, 0755); err != nil {
+			t.Fatalf("failed to create subdir %s: %v", wd, err)
+		}
+		prev, _ := os.Getwd()
+		if err := os.Chdir(wd); err != nil {
+			t.Fatalf("failed to chdir to subdir %s: %v", wd, err)
+		}
+		return prev
+	}
+
+	// Clean up any existing files in the root tempDir (per-subtest dirs will be clean)
 	os.Remove(".todos.json")
 	os.Remove(".todos.archive.json")
 
 	t.Run("archive_flag_with_list_command", func(t *testing.T) {
+		old := mkWd(t.Name())
+		defer os.Chdir(old)
 		// Create some archive data
 		archiveData := `[
 			{"internal_id":"test1","task":"Archived task 1","completed":true,"created_at":"2025-08-08T00:00:00Z","updated_at":"2025-08-08T00:00:00Z","completed_at":"2025-08-08T00:00:00Z"},
@@ -1192,9 +1303,12 @@ func TestCLIArchiveFlag(t *testing.T) {
 			t.Fatalf("Failed to create archive file: %v", err)
 		}
 
-		// Test listing archive with --archive flag
+	// Test listing archive with --archive flag (timed)
+		start := time.Now()
 		cmd := exec.Command(buildPath, "--archive", "list", "--format", "json")
 		output, err := cmd.CombinedOutput()
+		elapsed := time.Since(start)
+		t.Logf("--archive list duration: %s", elapsed)
 		if err != nil {
 			t.Fatalf("Failed to run --archive list: %v\nOutput: %s", err, output)
 		}
@@ -1206,6 +1320,19 @@ func TestCLIArchiveFlag(t *testing.T) {
 	})
 
 	t.Run("archive_flag_with_delete_command", func(t *testing.T) {
+		old := mkWd(t.Name())
+		defer os.Chdir(old)
+		
+		// Create some archive data first (each subtest needs its own data now)
+		archiveData := `[
+			{"internal_id":"test1","task":"Archived task 1","completed":true,"created_at":"2025-08-08T00:00:00Z","updated_at":"2025-08-08T00:00:00Z","completed_at":"2025-08-08T00:00:00Z"},
+			{"internal_id":"test2","task":"Archived task 2","completed":true,"created_at":"2025-08-08T00:00:00Z","updated_at":"2025-08-08T00:00:00Z","completed_at":"2025-08-08T00:00:00Z"}
+		]`
+		err := os.WriteFile(".todos.archive.json", []byte(archiveData), 0644)
+		if err != nil {
+			t.Fatalf("Failed to create archive file: %v", err)
+		}
+		
 		// Test deleting from archive
 		cmd := exec.Command(buildPath, "--archive", "delete", "1")
 		output, err := cmd.CombinedOutput()
@@ -1234,6 +1361,8 @@ func TestCLIArchiveFlag(t *testing.T) {
 	})
 
 	t.Run("archive_flag_blocks_unsupported_commands", func(t *testing.T) {
+		old := mkWd(t.Name())
+		defer os.Chdir(old)
 		// Test that add command is blocked
 		cmd := exec.Command(buildPath, "--archive", "add", "Should fail")
 		output, err := cmd.CombinedOutput()
@@ -1291,6 +1420,8 @@ func TestCLIArchiveFlag(t *testing.T) {
 	})
 
 	t.Run("archive_flag_help_shows_flag", func(t *testing.T) {
+		old := mkWd(t.Name())
+		defer os.Chdir(old)
 		cmd := exec.Command(buildPath, "help")
 		output, err := cmd.CombinedOutput()
 		if err != nil {
@@ -1311,8 +1442,10 @@ func TestCLIArchiveFlag(t *testing.T) {
 	})
 
 	t.Run("archive_flag_with_global_flag", func(t *testing.T) {
-		// Create temp home directory
-		mockHomeDir := filepath.Join(tempDir, "home")
+		old := mkWd(t.Name())
+		defer os.Chdir(old)
+		// Create temp home directory (use absolute path since we're in a subtest dir now)
+		mockHomeDir := filepath.Join(tempDir, "home", t.Name())
 		if err := os.MkdirAll(filepath.Join(mockHomeDir, ".todo"), 0755); err != nil {
 			t.Fatalf("Failed to create mock home directory: %v", err)
 		}
@@ -1337,9 +1470,12 @@ func TestCLIArchiveFlag(t *testing.T) {
 			t.Fatalf("Failed to create global archive file: %v", err)
 		}
 
-		// Test listing global archive with --global --archive flags
+		// Test listing global archive with --global --archive flags (timed)
+		start := time.Now()
 		cmd := exec.Command(buildPath, "--global", "--archive", "list", "--format", "json")
 		output, err := cmd.CombinedOutput()
+		elapsed := time.Since(start)
+		t.Logf("--global --archive list duration: %s", elapsed)
 		if err != nil {
 			t.Fatalf("Failed to run --global --archive list: %v\nOutput: %s", err, output)
 		}
@@ -1374,6 +1510,8 @@ func TestCLIArchiveFlag(t *testing.T) {
 	})
 
 	t.Run("archive_flag_with_empty_archive", func(t *testing.T) {
+		old := mkWd(t.Name())
+		defer os.Chdir(old)
 		// Remove archive file
 		os.Remove(".todos.archive.json")
 
@@ -1404,12 +1542,14 @@ func TestCLIArchiveFlag(t *testing.T) {
 
 // TestCLIFilterFlag tests the --filter flag functionality for list command
 func TestCLIFilterFlag(t *testing.T) {
-	// Build the CLI for testing
-	buildPath := filepath.Join(t.TempDir(), "todo.exe")
-
-	cmd := exec.Command("go", "build", "-o", buildPath, ".")
-	if err := cmd.Run(); err != nil {
-		t.Fatalf("Failed to build CLI: %v", err)
+	// Use shared test binary if available, otherwise build locally
+	buildPath := os.Getenv("TEST_TODO_BIN")
+	if buildPath == "" {
+		buildPath = filepath.Join(t.TempDir(), "todo.exe")
+		cmd := exec.Command("go", "build", "-o", buildPath, ".")
+		if err := cmd.Run(); err != nil {
+			t.Fatalf("Failed to build CLI: %v", err)
+		}
 	}
 
 	tempDir, err := os.MkdirTemp("", "todo_filter_test")

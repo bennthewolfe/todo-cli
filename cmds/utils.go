@@ -31,7 +31,25 @@ func (s *Storage[T]) Save(data T) error {
 	if err != nil {
 		return fmt.Errorf("error marshaling data to JSON: %w", err)
 	}
-	return os.WriteFile(s.filename, fileData, 0644)
+	// Detect whether the file already exists so we can register newly-created files
+	_, statErr := os.Stat(s.filename)
+	willCreate := false
+	if statErr != nil {
+		if os.IsNotExist(statErr) {
+			willCreate = true
+		}
+	}
+
+	if err := os.WriteFile(s.filename, fileData, 0644); err != nil {
+		return err
+	}
+
+	if willCreate {
+		// best-effort registration; do not fail Save if registration fails
+		_ = registerStoragePath(s.filename)
+	}
+
+	return nil
 }
 
 // Load loads data from the storage file
@@ -45,6 +63,9 @@ func (s *Storage[T]) Load() (T, error) {
 			return data, fmt.Errorf("error creating file: %w", err)
 		}
 		emptyFile.Close()
+
+		// best-effort: register this newly created storage file so it's tracked in ~/.todo/config.json
+		_ = registerStoragePath(s.filename)
 	}
 
 	// Read the file content
@@ -466,4 +487,60 @@ func initializeTodoListWithPath(storagePath string) (*TodoList, *Storage[TodoLis
 // initializeTodoList initializes the todo list and storage (legacy function for compatibility)
 func initializeTodoList() (*TodoList, *Storage[TodoList], error) {
 	return initializeTodoListWithPath(".todos.json")
+}
+
+// registerStoragePath records the absolute path of a storage file into ~/.todo/config.json
+// The config file has the shape: { "paths": ["/abs/path/one", "/abs/path/two"] }
+// This function is best-effort: it never returns an error to callers; any internal error is ignored.
+func registerStoragePath(p string) error {
+	// Resolve absolute path
+	absPath := p
+	if !filepath.IsAbs(p) {
+		if ap, err := filepath.Abs(p); err == nil {
+			absPath = ap
+		}
+	}
+
+	// Determine config file location: ~/.todo/config.json
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		return err
+	}
+	todoDir := filepath.Join(homeDir, ".todo")
+	if err := os.MkdirAll(todoDir, 0755); err != nil {
+		return err
+	}
+	cfgPath := filepath.Join(todoDir, "config.json")
+
+	// Load existing config if present
+	var cfg struct {
+		Paths []string `json:"paths"`
+	}
+
+	if data, err := os.ReadFile(cfgPath); err == nil && len(data) > 0 {
+		_ = json.Unmarshal(data, &cfg) // ignore unmarshal errors; we'll overwrite safely below
+	}
+
+	// Ensure absPath is in list (idempotent)
+	for _, existing := range cfg.Paths {
+		if existing == absPath {
+			return nil
+		}
+	}
+	cfg.Paths = append(cfg.Paths, absPath)
+
+	// Write back config file (atomic write)
+	out, err := json.MarshalIndent(cfg, "", "  ")
+	if err != nil {
+		return err
+	}
+	tmp := cfgPath + ".tmp"
+	if err := os.WriteFile(tmp, out, 0644); err != nil {
+		return err
+	}
+	if err := os.Rename(tmp, cfgPath); err != nil {
+		return err
+	}
+
+	return nil
 }

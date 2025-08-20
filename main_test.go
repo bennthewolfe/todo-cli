@@ -8,6 +8,10 @@ import (
 
 // TestMain sets up and tears down test environment
 func TestMain(m *testing.M) {
+	// Ensure shared test binary is built (integration_test.go provides buildSharedBinary)
+	// If buildSharedBinary isn't available or fails, tests will continue but some integration tests may fail.
+	buildSharedBinary()
+
 	// Setup: You can add any global test setup here
 	fmt.Println("Setting up tests...")
 
