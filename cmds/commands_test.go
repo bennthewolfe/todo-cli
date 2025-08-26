@@ -151,12 +151,24 @@ func TestArchiveCommand_Creation(t *testing.T) {
 		t.Errorf("NewArchiveCommand() Name = %s, want 'archive'", cmd.Name)
 	}
 
-	if cmd.Usage != "Archive a todo item by ID (moves to archive file)" {
+	if cmd.Usage != "Archive a todo item by ID, or archive all items if no ID provided" {
 		t.Errorf("NewArchiveCommand() Usage incorrect")
 	}
 
 	if len(cmd.Aliases) == 0 || cmd.Aliases[0] != "ar" {
 		t.Errorf("NewArchiveCommand() should have alias 'ar'")
+	}
+
+	// Check for force flag
+	hasForceFlag := false
+	for _, flag := range cmd.Flags {
+		if boolFlag, ok := flag.(*cli.BoolFlag); ok && boolFlag.Name == "force" {
+			hasForceFlag = true
+			break
+		}
+	}
+	if !hasForceFlag {
+		t.Errorf("NewArchiveCommand() should have force flag")
 	}
 }
 

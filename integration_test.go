@@ -591,15 +591,19 @@ func TestCLIArchive(t *testing.T) {
 	defer os.Chdir(oldWd)
 	os.Chdir(tempDir)
 
-	// Test archive without items
+	// Test archive with invalid ID when no items exist
 	t.Run("archive_invalid_id", func(t *testing.T) {
+		// Clean up any existing files to ensure empty list
+		os.Remove(".todos.json")
+		os.Remove(".todos.archive.json")
+
 		cmd := exec.Command(buildPath, "archive", "1")
 		output, err := cmd.CombinedOutput()
 		if err == nil {
 			t.Errorf("Expected archive to fail with no items, but it succeeded")
 		}
 
-		expectedMsg := "invalid ID"
+		expectedMsg := "invalid ID: 1"
 		if !strings.Contains(string(output), expectedMsg) {
 			t.Errorf("Expected %q in error output, got: %s", expectedMsg, output)
 		}
@@ -654,23 +658,57 @@ func TestCLIArchive(t *testing.T) {
 		}
 	})
 
-	// Test archive without arguments
+	// Test archive without arguments (should archive all items with confirmation)
 	t.Run("archive_without_args", func(t *testing.T) {
-		cmd := exec.Command(buildPath, "archive")
+		// First ensure we have items to archive
+		cmd := exec.Command(buildPath, "list", "--format", "json")
 		output, err := cmd.CombinedOutput()
-		if err == nil {
-			t.Errorf("Expected archive to fail without arguments, but it succeeded")
+		if err != nil {
+			t.Fatalf("Failed to list todos: %v\nOutput: %s", err, output)
 		}
 
-		expectedMsg := "exactly one ID is required"
+		// Count items in current list
+		itemCount := strings.Count(string(output), `"task":`)
+		if itemCount == 0 {
+			t.Skip("No items to test archive all functionality")
+		}
+
+		// Test with --force flag to avoid interactive prompt
+		cmd = exec.Command(buildPath, "archive", "--force")
+		output, err = cmd.CombinedOutput()
+		if err != nil {
+			t.Fatalf("Failed to archive all items: %v\nOutput: %s", err, output)
+		}
+
+		expectedMsg := fmt.Sprintf("Successfully archived %d item(s)", itemCount)
 		if !strings.Contains(string(output), expectedMsg) {
-			t.Errorf("Expected %q in error output, got: %s", expectedMsg, output)
+			t.Errorf("Expected %q in output, got: %s", expectedMsg, output)
+		}
+
+		// Verify main list is now empty
+		cmd = exec.Command(buildPath, "list")
+		output, err = cmd.CombinedOutput()
+		if err != nil {
+			t.Fatalf("Failed to list todos after archive all: %v\nOutput: %s", err, output)
+		}
+
+		if !strings.Contains(string(output), "No todos found") {
+			t.Errorf("Expected empty list after archiving all, got: %s", output)
 		}
 	})
 
-	// Test archive with invalid ID format
+	// Test archive with invalid ID format (need to test when items exist)
 	t.Run("archive_invalid_format", func(t *testing.T) {
-		cmd := exec.Command(buildPath, "archive", "abc")
+		// Clean up and add a test item first
+		os.Remove(".todos.json")
+		os.Remove(".todos.archive.json")
+		
+		cmd := exec.Command(buildPath, "add", "Test item for invalid format test")
+		if err := cmd.Run(); err != nil {
+			t.Fatalf("Failed to add test item: %v", err)
+		}
+
+		cmd = exec.Command(buildPath, "archive", "abc")
 		output, err := cmd.CombinedOutput()
 		if err == nil {
 			t.Errorf("Expected archive to fail with invalid ID format, but it succeeded")
@@ -679,6 +717,209 @@ func TestCLIArchive(t *testing.T) {
 		expectedMsg := "invalid ID: abc must be a number"
 		if !strings.Contains(string(output), expectedMsg) {
 			t.Errorf("Expected %q in error output, got: %s", expectedMsg, output)
+		}
+	})
+
+	// Test archive with valid ID format but out of range
+	t.Run("archive_id_out_of_range", func(t *testing.T) {
+		// Use the item from previous test (should only have 1 item)
+		cmd := exec.Command(buildPath, "archive", "99")
+		output, err := cmd.CombinedOutput()
+		if err == nil {
+			t.Errorf("Expected archive to fail with out of range ID, but it succeeded")
+		}
+
+		expectedMsg := "invalid ID: 99"
+		if !strings.Contains(string(output), expectedMsg) {
+			t.Errorf("Expected %q in error output, got: %s", expectedMsg, output)
+		}
+	})
+}
+
+// TestCLIArchiveAll tests the new archive all functionality
+func TestCLIArchiveAll(t *testing.T) {
+	// Use shared test binary if available, otherwise build locally
+	buildPath := os.Getenv("TEST_TODO_BIN")
+	if buildPath == "" {
+		buildPath = filepath.Join(t.TempDir(), "todo.exe")
+		if runtime.GOOS != "windows" {
+			buildPath = filepath.Join(t.TempDir(), "todo")
+		}
+		cmd := exec.Command("go", "build", "-o", buildPath, ".")
+		if err := cmd.Run(); err != nil {
+			t.Fatalf("Failed to build CLI: %v", err)
+		}
+	}
+
+	// Create temporary directory for testing
+	tempDir, err := os.MkdirTemp("", "todo_archive_all_test")
+	if err != nil {
+		t.Fatalf("Failed to create temp directory: %v", err)
+	}
+	defer os.RemoveAll(tempDir)
+
+	// Change to temp directory
+	oldWd, _ := os.Getwd()
+	defer os.Chdir(oldWd)
+	os.Chdir(tempDir)
+
+	t.Run("archive_all_with_force_flag", func(t *testing.T) {
+		// Clean up any existing files
+		os.Remove(".todos.json")
+		os.Remove(".todos.archive.json")
+
+		// Add some test items
+		testItems := []string{"First item", "Second item", "Third item"}
+		for _, item := range testItems {
+			cmd := exec.Command(buildPath, "add", item)
+			if err := cmd.Run(); err != nil {
+				t.Fatalf("Failed to add test item: %v", err)
+			}
+		}
+
+		// Complete some items to test mixed status
+		cmd := exec.Command(buildPath, "toggle", "1")
+		if err := cmd.Run(); err != nil {
+			t.Fatalf("Failed to toggle item: %v", err)
+		}
+
+		// Archive all items with --force flag
+		cmd = exec.Command(buildPath, "archive", "--force")
+		output, err := cmd.CombinedOutput()
+		if err != nil {
+			t.Fatalf("Failed to archive all items: %v\nOutput: %s", err, output)
+		}
+
+		expectedMsg := "Successfully archived 3 item(s)"
+		if !strings.Contains(string(output), expectedMsg) {
+			t.Errorf("Expected %q in output, got: %s", expectedMsg, output)
+		}
+
+		// Verify main list is empty
+		cmd = exec.Command(buildPath, "list")
+		output, err = cmd.CombinedOutput()
+		if err != nil {
+			t.Fatalf("Failed to list todos after archive all: %v\nOutput: %s", err, output)
+		}
+
+		if !strings.Contains(string(output), "No todos found") {
+			t.Errorf("Expected empty list after archiving all, got: %s", output)
+		}
+
+		// Verify archive file exists and contains all items
+		if _, err := os.Stat(".todos.archive.json"); os.IsNotExist(err) {
+			t.Errorf("Archive file was not created")
+		}
+
+		// Check archive contents
+		cmd = exec.Command(buildPath, "list", "--archive", "--format", "json")
+		output, err = cmd.CombinedOutput()
+		if err != nil {
+			t.Fatalf("Failed to list archive: %v\nOutput: %s", err, output)
+		}
+
+		outputStr := string(output)
+		archivedItemCount := strings.Count(outputStr, `"task":`)
+		if archivedItemCount != 3 {
+			t.Errorf("Expected 3 items in archive, got %d", archivedItemCount)
+		}
+
+		// Verify all original items are in archive
+		for _, item := range testItems {
+			if !strings.Contains(outputStr, item) {
+				t.Errorf("Expected item %q in archive, but not found", item)
+			}
+		}
+
+		// Verify completed status is preserved
+		if !strings.Contains(outputStr, `"completed":true`) {
+			t.Errorf("Expected completed status to be preserved in archive")
+		}
+	})
+
+	t.Run("archive_all_with_list_flag", func(t *testing.T) {
+		// Clean up any existing files
+		os.Remove(".todos.json")
+		os.Remove(".todos.archive.json")
+
+		// Add some test items
+		cmd := exec.Command(buildPath, "add", "List test item 1")
+		if err := cmd.Run(); err != nil {
+			t.Fatalf("Failed to add test item: %v", err)
+		}
+
+		cmd = exec.Command(buildPath, "add", "List test item 2")
+		if err := cmd.Run(); err != nil {
+			t.Fatalf("Failed to add test item: %v", err)
+		}
+
+		// Archive all with --force and --list flags
+		cmd = exec.Command(buildPath, "archive", "--force", "--list")
+		output, err := cmd.CombinedOutput()
+		if err != nil {
+			t.Fatalf("Failed to archive all with list: %v\nOutput: %s", err, output)
+		}
+
+		outputStr := string(output)
+		// Should contain both archive confirmation and list output
+		if !strings.Contains(outputStr, "Successfully archived 2 item(s)") {
+			t.Errorf("Expected archive confirmation, got: %s", outputStr)
+		}
+		// After archiving all items, list should show "No todos found"
+		if !strings.Contains(outputStr, "No todos found") {
+			t.Errorf("Expected 'No todos found' message after archiving all, got: %s", outputStr)
+		}
+	})
+
+	t.Run("archive_all_empty_list", func(t *testing.T) {
+		// Clean up any existing files
+		os.Remove(".todos.json")
+		os.Remove(".todos.archive.json")
+
+		// Try to archive when no items exist
+		cmd := exec.Command(buildPath, "archive", "--force")
+		output, err := cmd.CombinedOutput()
+		if err != nil {
+			t.Fatalf("Failed to handle empty list: %v\nOutput: %s", err, output)
+		}
+
+		expectedMsg := "No todos found to archive"
+		if !strings.Contains(string(output), expectedMsg) {
+			t.Errorf("Expected %q in output for empty list, got: %s", expectedMsg, output)
+		}
+	})
+
+	t.Run("archive_all_too_many_args", func(t *testing.T) {
+		// Test error case with too many arguments
+		cmd := exec.Command(buildPath, "archive", "1", "2")
+		output, err := cmd.CombinedOutput()
+		if err == nil {
+			t.Errorf("Expected archive to fail with too many arguments, but it succeeded")
+		}
+
+		expectedMsg := "too many arguments"
+		if !strings.Contains(string(output), expectedMsg) {
+			t.Errorf("Expected %q in error output, got: %s", expectedMsg, output)
+		}
+	})
+
+	t.Run("archive_help_updated", func(t *testing.T) {
+		// Test that help shows updated usage
+		cmd := exec.Command(buildPath, "archive", "--help")
+		output, err := cmd.CombinedOutput()
+		if err != nil {
+			t.Fatalf("Failed to get archive help: %v\nOutput: %s", err, output)
+		}
+
+		outputStr := string(output)
+		expectedUsage := "Archive a todo item by ID, or archive all items if no ID provided"
+		if !strings.Contains(outputStr, expectedUsage) {
+			t.Errorf("Expected updated usage in help, got: %s", outputStr)
+		}
+
+		// Should mention force flag
+		if !strings.Contains(outputStr, "--force") || !strings.Contains(outputStr, "Skip confirmation") {
+			t.Errorf("Expected force flag in help, got: %s", outputStr)
 		}
 	})
 }
