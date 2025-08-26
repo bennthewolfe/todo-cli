@@ -134,5 +134,162 @@
     "created_at": "2025-08-07T23:59:53-04:00",
     "updated_at": "2025-08-08T00:00:03-04:00",
     "completed_at": "2025-08-08T00:00:03-04:00"
+  },
+  {
+    "internal_id": "d3c2b1a6f5e4",
+    "task": "--Filter flag for basic filters",
+    "completed": false,
+    "created_at": "2025-08-05T18:27:42-04:00",
+    "updated_at": "2025-08-07T23:58:45-04:00"
+  },
+  {
+    "internal_id": "f8062069ff55",
+    "task": "Test item 1",
+    "completed": false,
+    "created_at": "2025-08-26T17:17:39-04:00",
+    "updated_at": "2025-08-26T17:17:39-04:00"
+  },
+  {
+    "internal_id": "15ce39872aff",
+    "task": "Test item 2",
+    "completed": false,
+    "created_at": "2025-08-26T17:17:41-04:00",
+    "updated_at": "2025-08-26T17:17:41-04:00"
+  },
+  {
+    "internal_id": "7e7f1d80c723",
+    "task": "Test item 3",
+    "completed": false,
+    "created_at": "2025-08-26T17:17:42-04:00",
+    "updated_at": "2025-08-26T17:17:42-04:00"
+  },
+  {
+    "internal_id": "4d46ff594242",
+    "task": "Item 1",
+    "completed": true,
+    "created_at": "2025-08-26T17:22:39-04:00",
+    "updated_at": "2025-08-26T17:22:54-04:00",
+    "completed_at": "2025-08-26T17:22:54-04:00"
+  },
+  {
+    "internal_id": "adae864119e2",
+    "task": "Item 2",
+    "completed": false,
+    "created_at": "2025-08-26T17:22:42-04:00",
+    "updated_at": "2025-08-26T17:22:42-04:00"
+  },
+  {
+    "internal_id": "4f86567c764d",
+    "task": "Test confirmation",
+    "completed": false,
+    "created_at": "2025-08-26T17:24:28-04:00",
+    "updated_at": "2025-08-26T17:24:28-04:00"
+  },
+  {
+    "internal_id": "749638889a99",
+    "task": "Another test",
+    "completed": false,
+    "created_at": "2025-08-26T17:24:40-04:00",
+    "updated_at": "2025-08-26T17:24:40-04:00"
+  },
+  {
+    "internal_id": "bfef3ba1b92f",
+    "task": "Will be archived",
+    "completed": false,
+    "created_at": "2025-08-26T17:26:37-04:00",
+    "updated_at": "2025-08-26T17:26:37-04:00"
+  },
+  {
+    "internal_id": "b7b34415a26a",
+    "task": "Add ability to read and write to any file",
+    "completed": true,
+    "created_at": "2025-08-07T16:14:58-04:00",
+    "updated_at": "2025-08-26T17:38:18-04:00",
+    "completed_at": "2025-08-26T17:38:18-04:00"
+  },
+  {
+    "internal_id": "242b7eb92dbc",
+    "task": "List manager where it keeps track of all the lists, you've built with the tool",
+    "completed": false,
+    "created_at": "2025-08-07T16:15:37-04:00",
+    "updated_at": "2025-08-07T16:15:37-04:00"
+  },
+  {
+    "internal_id": "7b3929260e33",
+    "task": "Add use-list command to use a particular list without specifying a particular file every time",
+    "completed": false,
+    "created_at": "2025-08-07T16:16:29-04:00",
+    "updated_at": "2025-08-07T16:16:29-04:00"
+  },
+  {
+    "internal_id": "f73f9725272e",
+    "task": "Add support for multiple arguments for del, toggle, add(?)",
+    "completed": false,
+    "created_at": "2025-08-08T01:10:49-04:00",
+    "updated_at": "2025-08-08T01:10:49-04:00"
+  },
+  {
+    "internal_id": "18d8ae7df597",
+    "task": "Test item",
+    "completed": false,
+    "created_at": "2025-08-26T17:32:08-04:00",
+    "updated_at": "2025-08-26T17:32:08-04:00"
+  },
+  {
+    "internal_id": "c436434ef2f9",
+    "task": "Test task 1",
+    "completed": false,
+    "created_at": "2025-08-26T17:36:59-04:00",
+    "updated_at": "2025-08-26T17:36:59-04:00"
+  },
+  {
+    "internal_id": "eac0c2d12742",
+    "task": "Test task 2",
+    "completed": false,
+    "created_at": "2025-08-26T17:37:01-04:00",
+    "updated_at": "2025-08-26T17:37:01-04:00"
+  },
+  {
+    "internal_id": "f4f9c7a31300",
+    "task": "Test item for interactive prompt",
+    "completed": false,
+    "created_at": "2025-08-26T17:41:00-04:00",
+    "updated_at": "2025-08-26T17:41:00-04:00"
+  },
+  {
+    "internal_id": "a183e9b9761d",
+    "task": "Test task 2",
+    "completed": false,
+    "created_at": "2025-08-26T17:47:47-04:00",
+    "updated_at": "2025-08-26T17:47:47-04:00"
+  },
+  {
+    "internal_id": "7f332e258874",
+    "task": "Test task 1",
+    "completed": true,
+    "created_at": "2025-08-26T17:47:45-04:00",
+    "updated_at": "2025-08-26T17:47:57-04:00",
+    "completed_at": "2025-08-26T17:47:57-04:00"
+  },
+  {
+    "internal_id": "dc302530843c",
+    "task": "Final test task",
+    "completed": false,
+    "created_at": "2025-08-26T17:50:17-04:00",
+    "updated_at": "2025-08-26T17:50:17-04:00"
+  },
+  {
+    "internal_id": "f6a1a47f5c2c",
+    "task": "A first item",
+    "completed": false,
+    "created_at": "2025-08-26T17:53:24-04:00",
+    "updated_at": "2025-08-26T17:53:24-04:00"
+  },
+  {
+    "internal_id": "cc4bb0864ddf",
+    "task": "A second item",
+    "completed": false,
+    "created_at": "2025-08-26T17:53:50-04:00",
+    "updated_at": "2025-08-26T17:53:50-04:00"
   }
 ]
